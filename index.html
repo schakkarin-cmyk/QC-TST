@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบควบคุมคุณภาพ QC-TST</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+  /* ══════════════════════════════════════════════════════════════
+     TST QC Professional — Design System v2
+  ══════════════════════════════════════════════════════════════ */
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Sarabun', 'Tahoma', Arial, sans-serif;
+    background: #EEF2F7;
+    color: #1a2b4a;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ─────────────────────────────────────────────── */
+  .app-header {
+    background: #ffffff;
+    border-bottom: 4px solid transparent;
+    border-image: linear-gradient(90deg, #004B8D 0%, #0072CE 50%, #E8A020 100%) 1;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+    position: sticky; top: 0; z-index: 1000;
+  }
+  .header-inner {
+    max-width: 1140px; margin: 0 auto;
+    padding: 10px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo { height: 52px; width: auto; object-fit: contain; }
+  .header-divider { width: 1px; height: 40px; background: #DDE3EE; }
+  .header-system { display: flex; flex-direction: column; }
+  .header-system-title { font-size: 17px; font-weight: 800; color: #004B8D; letter-spacing: 0.2px; }
+  .header-system-sub   { font-size: 11.5px; color: #6B7E99; margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  .header-badge {
+    padding: 4px 11px; border-radius: 20px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.4px; border: 1.5px solid;
+  }
+  .badge-107  { color: #004B8D; border-color: #004B8D; background: #EBF4FF; }
+  .badge-2817 { color: #8B4500; border-color: #E8A020; background: #FFF8E7; }
+  .header-status {
+    padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 700;
+    background: #F0F4FA; color: #6B7E99; border: 1px solid #DDE3EE;
+    min-width: 200px; text-align: center;
+  }
+
+  /* ── TAB BAR ─────────────────────────────────────────────── */
+  .tab-bar { background: #fff; border-bottom: 1px solid #DDE3EE; }
+  .tab-bar-inner { max-width: 1140px; margin: 0 auto; display: flex; padding: 0 24px; }
+  .tab-btn {
+    padding: 13px 22px; border: none; background: none;
+    cursor: pointer; font-size: 14px; font-weight: 700;
+    color: #6B7E99; border-bottom: 3px solid transparent;
+    transition: all 0.2s; font-family: 'Sarabun', sans-serif;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .tab-btn:hover { color: #004B8D; background: #F5F8FF; }
+  .tab-btn.active { color: #004B8D; border-bottom-color: #004B8D; }
+
+  /* ── PAGE WRAPPER ────────────────────────────────────────── */
+  .page-wrap {
+    max-width: 1140px; margin: 20px auto 40px;
+    padding: 0 16px;
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ── MAIN CARD ───────────────────────────────────────────── */
+  .main-card {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 24px;
+    background: linear-gradient(135deg, #F5F8FF 0%, #EBF4FF 100%);
+    border-bottom: 1px solid #DDE3EE;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .card-header-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 20px;
+  }
+  .icon-blue   { background: linear-gradient(135deg,#004B8D,#0072CE); color: white; }
+  .icon-green  { background: linear-gradient(135deg,#1B8A4E,#27AE60); color: white; }
+  .card-header h2 {
+    font-size: 17px; font-weight: 800; color: #004B8D;
+    margin: 0; padding: 0; border: none;
+  }
+  .card-header p { font-size: 12px; color: #6B7E99; margin: 2px 0 0; }
+
+  /* ── 2-COLUMN LAYOUT ─────────────────────────────────────── */
+  .form-preview-grid {
+    display: grid; grid-template-columns: 390px 1fr;
+  }
+  .form-panel { padding: 24px; border-right: 1px solid #EEF2F7; }
+  .preview-panel {
+    padding: 28px 24px;
+    background: linear-gradient(160deg, #F5F8FF 0%, #EEF2F7 100%);
+    display: flex; flex-direction: column; align-items: flex-start;
+  }
+
+  /* ── STANDARD SELECTOR ───────────────────────────────────── */
+  .std-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .std-card {
+    cursor: pointer; border: 2px solid #DDE3EE;
+    border-radius: 11px; padding: 12px 14px 11px;
+    background: #FAFBFD; display: block; position: relative;
+    transition: all 0.18s;
+  }
+  .std-card:hover { border-color: #0072CE; background: #F0F8FF; }
+  .std-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+  .std-card.selected {
+    border-color: #004B8D; background: #EBF4FF;
+    box-shadow: 0 0 0 3px rgba(0,75,141,0.10);
+  }
+  .std-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .std-mk {
+    font-size: 9px; font-weight: 800; padding: 2px 7px;
+    border-radius: 4px; color: white; letter-spacing: 0.4px;
+  }
+  .mk-blue   { background: #004B8D; }
+  .mk-orange { background: #C47A00; }
+  .std-no  { font-size: 16px; font-weight: 800; color: #1a2b4a; line-height: 1.1; }
+  .std-desc{ font-size: 12px; color: #6B7E99; margin-top: 3px; }
+  .std-card.selected .std-no  { color: #004B8D; }
+  .std-card.selected .std-desc{ color: #0072CE; }
+  .std-check {
+    position: absolute; top: 8px; right: 10px;
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #DDE3EE; background: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: white; transition: all 0.18s;
+  }
+  .std-card.selected .std-check { background: #004B8D; border-color: #004B8D; }
+
+  /* ── SECTION LABEL ───────────────────────────────────────── */
+  .sec-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: #9BAABB;
+    margin: 16px 0 11px; display: flex; align-items: center; gap: 8px;
+  }
+  .sec-label::after { content: ''; flex: 1; height: 1px; background: #DDE3EE; }
+
+  /* ── FORM FIELDS ─────────────────────────────────────────── */
+  .form-group { margin-bottom: 13px; position: relative; }
+  .form-group label {
+    display: block; font-size: 12px; font-weight: 700;
+    margin-bottom: 5px; color: #4A5E78;
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .form-group input, .form-group select {
+    width: 100%; padding: 10px 12px;
+    border: 1.5px solid #DDE3EE; border-radius: 8px;
+    font-size: 14px; font-family: 'Sarabun', sans-serif;
+    color: #1a2b4a; background: white; outline: none;
+    transition: border-color 0.18s, box-shadow 0.18s;
+  }
+  .form-group input:focus, .form-group select:focus {
+    border-color: #0072CE;
+    box-shadow: 0 0 0 3px rgba(0,114,206,0.10);
+  }
+  .form-group input[readonly] { background: #F5F7FA; color: #6B7E99; cursor: default; }
+  .form-group input[readonly]:focus { border-color: #DDE3EE; box-shadow: none; }
+
+  /* ── PRODUCT INFO BOX ────────────────────────────────────── */
+  .info-box {
+    background: #F5F8FF; border: 1.5px solid #DDE3EE;
+    border-left: 4px solid #0072CE; border-radius: 8px;
+    padding: 11px 13px; margin-bottom: 13px;
+  }
+  .info-box-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #9BAABB; margin-bottom: 3px; }
+  .info-box-value { font-size: 14px; font-weight: 700; color: #1a2b4a; }
+
+  /* ── AUTOCOMPLETE ────────────────────────────────────────── */
+  .autocomplete-list {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 200;
+    border: 1.5px solid #DDE3EE; border-top: none; background: white;
+    max-height: 200px; overflow-y: auto;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    border-radius: 0 0 8px 8px;
+  }
+  .autocomplete-item {
+    padding: 10px 12px; cursor: pointer;
+    border-bottom: 1px solid #F0F4FA;
+    display: flex; justify-content: space-between; font-size: 14px;
+    transition: background 0.12s;
+  }
+  .autocomplete-item:hover { background: #EBF4FF; }
+  .autocomplete-item:last-child { border-bottom: none; }
+
+  /* ── BUTTONS ─────────────────────────────────────────────── */
+  .btn-group { display: flex; flex-direction: column; gap: 9px; margin-top: 20px; }
+  .btn-print {
+    width: 100%; padding: 13px;
+    background: linear-gradient(135deg, #1B8A4E 0%, #22A85F 100%);
+    color: white; border: none; border-radius: 10px;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; letter-spacing: 0.2px;
+    box-shadow: 0 4px 14px rgba(27,138,78,0.35);
+    transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .btn-print:hover { box-shadow: 0 6px 18px rgba(27,138,78,0.50); transform: translateY(-1px); }
+  .btn-print:active { transform: translateY(0); }
+  .btn-refresh {
+    width: 100%; padding: 10px; background: white; color: #4A5E78;
+    border: 1.5px solid #DDE3EE; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    font-family: 'Sarabun', sans-serif; transition: all 0.18s;
+  }
+  .btn-refresh:hover { border-color: #9BAABB; background: #F5F7FA; }
+
+  /* ── PREVIEW PANEL ───────────────────────────────────────── */
+  .preview-heading {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1px; color: #9BAABB; margin-bottom: 18px;
+    display: flex; align-items: center; gap: 8px; width: 100%;
+  }
+  .preview-heading::after { content: ''; flex: 1; height: 1px; background: #DDE3EE; }
+  .sticker-wrap {
+    background: white; border-radius: 12px; padding: 20px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .sticker-note { font-size: 11px; color: #9BAABB; margin-top: 12px; font-style: italic; }
+
+  /* ── CERT AREA ───────────────────────────────────────────── */
+  .cert-preview-area { margin-top: 20px; overflow-x: auto; background: #dde3ee; padding: 20px; border-radius: 8px; }
+  .cert-page { width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 20mm; box-shadow: 0 0 10px rgba(0,0,0,0.2); font-size: 12px; text-align: left; }
+
+  /* ══════════════════════════════════════════════════════════
+     STICKER LAYOUT — ห้ามเปลี่ยน
+  ══════════════════════════════════════════════════════════ */
+  .sticker-preview {
+    display: inline-block; padding: 0;
+    transform: scale(1.5); transform-origin: top left; border-radius: 2px;
+  }
+  .sticker-content {
+    width: 75mm; height: 25mm; display: grid;
+    grid-template-columns: 20mm 55mm;
+    font-family: 'Sarabun', sans-serif; padding: 0;
+    border: 0.3mm solid #ccc; background-color: white; overflow: hidden;
+  }
+  .left-panel {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding-top: 1.5mm; border-right: 0.1mm solid #eee;
+  }
+  .sticker-logo img { width: 9mm; height: 9mm; object-fit: contain; margin-bottom: 1mm; }
+  .sticker-qr img  { width: 10mm; height: 10mm; object-fit: contain; }
+  .right-panel {
+    display: flex; flex-direction: column; justify-content: flex-start;
+    padding: 1.2mm 2mm; text-align: left;
+  }
+  .tisi-no      { font-weight: bold; font-size: 8.5pt; line-height: 1.1; margin: 0; color: #000; }
+  .company      { font-weight: bold; font-size: 7.2pt; line-height: 1.1; margin: 0 0 0.8mm 0; color: #000; }
+  .details-area { display: flex; flex-direction: column; }
+  .product-details { font-size: 5.2pt; line-height: 1.25; margin: 0; white-space: nowrap; color: #000; }
+
+  /* ══════════════════════════════════════════════════════════
+     PRINT RULES — ห้ามเปลี่ยน
+  ══════════════════════════════════════════════════════════ */
+  @media print {
+    @page { margin: 0 !important; size: auto; }
+    html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; overflow: visible !important; }
+    .app-header, .tab-bar, .btn-group, .btn-print, .btn-refresh,
+    .header-status, form, h2, h3, hr, nav,
+    .card-header, .form-panel, .preview-heading, .sticker-note,
+    .sec-label, .info-box { display: none !important; }
+
+    body.print-mode-sticker { width: 75mm !important; height: 25mm !important; }
+    body.print-mode-sticker .page-wrap { margin: 0 !important; padding: 0 !important; }
+    body.print-mode-sticker .main-card { border-radius: 0 !important; box-shadow: none !important; }
+    body.print-mode-sticker .form-preview-grid { display: block !important; }
+    body.print-mode-sticker .preview-panel {
+      padding: 0 !important; background: white !important;
+      width: 75mm !important; height: 25mm !important;
+    }
+    body.print-mode-sticker .sticker-wrap { padding: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+    body.print-mode-sticker .tab-content:not(#tab-sticker) { display: none !important; }
+    body.print-mode-sticker #tab-sticker { display: block !important; }
+    body.print-mode-sticker .sticker-preview {
+      display: block !important; transform: none !important;
+      margin: 0 !important; padding: 0 !important; border: none !important;
+      width: 75mm !important; height: 25mm !important;
+    }
+    body.print-mode-sticker .sticker-content {
+      display: grid !important; width: 75mm !important; height: 25mm !important;
+      background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    body.print-mode-sticker .tisi-no      { font-size: 9pt !important; font-weight: 800 !important; line-height: 1.0 !important; }
+    body.print-mode-sticker .company      { font-size: 7.5pt !important; font-weight: 800 !important; line-height: 1.0 !important; margin-bottom: 0.4mm !important; }
+    body.print-mode-sticker .product-details { font-size: 5.3pt !important; font-weight: 800 !important; line-height: 1.15 !important; color: #000 !important; white-space: nowrap !important; }
+
+    body.print-mode-cert { width: 100% !important; height: auto !important; }
+    body.print-mode-cert .page-wrap { width: 100% !important; }
+    body.print-mode-cert .main-card { box-shadow: none !important; }
+    body.print-mode-cert #tab-sticker { display: none !important; }
+    body.print-mode-cert #tab-cert    { display: block !important; }
+    body.print-mode-cert .cert-page   { visibility: visible !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; }
+  }
+  </style>
+</head>
+
+<body class="idle-mode">
+
+  <!-- ══ HEADER ════════════════════════════════════════════ -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <img class="header-logo"
+             src="https://static.wixstatic.com/media/5a1d18_237433e7b53841cca74e8f402795c4ca~mv2.png/v1/fit/w_2500,h_1330,al_c/5a1d18_237433e7b53841cca74e8f402795c4ca~mv2.png"
+             alt="TST Logo">
+        <div class="header-divider"></div>
+        <div class="header-system">
+          <div class="header-system-title">ระบบควบคุมคุณภาพ QC-TST</div>
+          <div class="header-system-sub">Quality Control &amp; Sticker Printing System</div>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="header-badge badge-107">มอก. 107-2566</span>
+        <span class="header-badge badge-2817">มอก. 2817-2562</span>
+        <div id="status-message" class="header-status">⏳ กำลังโหลดข้อมูลสินค้า...</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ══ TAB BAR ══════════════════════════════════════════ -->
+  <nav class="tab-bar">
+    <div class="tab-bar-inner">
+      <button class="tab-btn active" onclick="openTab(event,'tab-sticker')">🖨️ พิมพ์สติกเกอร์ มอก.</button>
+      <button class="tab-btn"        onclick="openTab(event,'tab-cert')">📄 ออกใบรับรองคุณภาพ</button>
+    </div>
+  </nav>
+
+  <!-- ══ PAGE CONTENT ══════════════════════════════════════ -->
+  <div class="page-wrap">
+
+    <!-- ── TAB 1 : STICKER ──────────────────────────────── -->
+    <section id="tab-sticker" class="tab-content active">
+      <div class="main-card">
+
+        <div class="card-header">
+          <div class="card-header-icon icon-blue">🖨️</div>
+          <div>
+            <h2>พิมพ์สติกเกอร์ มอก.</h2>
+            <p>ขนาดสติกเกอร์ 75 × 25 มม. — บันทึกประวัติลง Google Sheets อัตโนมัติ</p>
+          </div>
+        </div>
+
+        <div class="form-preview-grid">
+
+          <!-- FORM ────────────────────────────────── -->
+          <div class="form-panel">
+            <form id="stickerForm" autocomplete="off">
+
+              <div class="sec-label">เลือกมาตรฐาน</div>
+              <div class="std-grid">
+                <label class="std-card selected" data-std="107">
+                  <input type="radio" name="standard" value="107" checked onchange="switchStandard()">
+                  <div class="std-check">✓</div>
+                  <div class="std-top"><span class="std-mk mk-blue">มอก.</span></div>
+                  <div class="std-no">107-2566</div>
+                  <div class="std-desc">ท่อเหล็กกล้าคาร์บอน</div>
+                </label>
+                <label class="std-card" data-std="2817">
+                  <input type="radio" name="standard" value="2817" onchange="switchStandard()">
+                  <div class="std-check">✓</div>
+                  <div class="std-top"><span class="std-mk mk-orange">มอก.</span></div>
+                  <div class="std-no">2817-2562</div>
+                  <div class="std-desc">เหล็กรูปตัวซีมีขอบ</div>
+                </label>
+              </div>
+
+              <div class="sec-label">ข้อมูลสินค้า</div>
+              <div class="form-group">
+                <label for="product_code">รหัสสินค้า (Product Code)</label>
+                <input type="text" id="product_code" name="product_code" placeholder="กรอกหรือค้นหา เช่น P001" required oninput="showSuggestions()">
+                <div id="autocomplete-list" class="autocomplete-list" style="display:none;"></div>
+              </div>
+
+              <div class="info-box">
+                <div class="info-box-label">ชื่อสินค้า</div>
+                <div class="info-box-value" id="product_name_display">— กรุณากรอกรหัสสินค้า —</div>
+              </div>
+              <input type="hidden" id="product_name" name="product_name" value="---">
+              <input type="hidden" id="size"  name="size">
+              <input type="hidden" id="style" name="style">
+
+              <div class="form-group">
+                <label for="lot_no">เลขล็อต / รหัสรุ่น (Lot / Batch)</label>
+                <input type="text" id="lot_no" name="lot_no" placeholder="เช่น P127/12" oninput="updatePreview()">
+              </div>
+
+              <!-- Fields: มอก. 107 -->
+              <div id="fields-107">
+                <div class="sec-label">ข้อมูลเฉพาะ มอก. 107-2566</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div class="form-group">
+                    <label for="surface_coating">ผิวเคลือบ</label>
+                    <input type="text" id="surface_coating" name="surface_coating" placeholder="เช่น K06" oninput="updatePreview()">
+                  </div>
+                  <div class="form-group">
+                    <label for="grade">ชั้นคุณภาพ (Grade)</label>
+                    <select id="grade" name="grade" required onchange="updatePreview()">
+                      <option value="STKR400" selected>STKR400</option>
+                      <option value="STKR290">STKR290</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Fields: มอก. 2817 -->
+              <div id="fields-2817" style="display:none;">
+                <div class="sec-label">ข้อมูลเฉพาะ มอก. 2817-2562</div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div class="form-group"><label>ชั้นคุณภาพ</label><input type="text" value="G340" readonly></div>
+                  <div class="form-group"><label>มวลโลหะเคลือบ</label><input type="text" value="K06" readonly></div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                  <div class="form-group"><label>แบบ (Style)</label><input type="text" value="รูปตัวซีมีขอบ" readonly></div>
+                  <div class="form-group"><label>ประเทศที่ทำ</label><input type="text" value="ประเทศไทย" readonly></div>
+                </div>
+              </div>
+
+              <div class="btn-group">
+                <button type="button" class="btn-print" onclick="printSticker()">🖨️ บันทึกและพิมพ์สติกเกอร์</button>
+                <button type="button" class="btn-refresh" onclick="updatePreview()">🔄 อัปเดตตัวอย่าง</button>
+              </div>
+            </form>
+          </div><!-- /form-panel -->
+
+          <!-- PREVIEW ──────────────────────────────── -->
+          <div class="preview-panel">
+            <div class="preview-heading">ตัวอย่างสติกเกอร์ — Scale 150%</div>
+            <div class="sticker-wrap">
+              <div class="sticker-preview" id="stickerPreview"></div>
+            </div>
+            <div class="sticker-note">* ขยายเพื่อให้เห็นรายละเอียด — ขนาดพิมพ์จริง 75 × 25 มม.</div>
+          </div>
+
+        </div><!-- /form-preview-grid -->
+      </div><!-- /main-card -->
+    </section>
+
+    <!-- ── TAB 2 : CERTIFICATE ───────────────────────────── -->
+    <section id="tab-cert" class="tab-content">
+      <div class="main-card">
+
+        <div class="card-header">
+          <div class="card-header-icon icon-green">📄</div>
+          <div>
+            <h2>ออกใบรับรองคุณภาพ</h2>
+            <p>Mill Test Certificate — TIS 107-2566 — พิมพ์ขนาด A4</p>
+          </div>
+        </div>
+
+        <div style="padding:24px;">
+          <form id="certForm" autocomplete="off">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+              <div class="form-group">
+                <label>รหัสสินค้า (Product Code)</label>
+                <input type="text" id="c_product_code" placeholder="เช่น P001" oninput="showSuggestionsCert()">
+                <div id="autocomplete-list-cert" class="autocomplete-list" style="display:none;"></div>
+              </div>
+              <div class="form-group">
+                <label>ชื่อลูกค้า (Customer)</label>
+                <input type="text" id="c_customer" placeholder="ระบุชื่อบริษัทลูกค้า" oninput="updateCertPreview()">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>ชื่อสินค้า (Product Name)</label>
+              <input type="text" id="c_product_name" readonly>
+            </div>
+
+            <div class="sec-label">Chemical Analysis (%)</div>
+            <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:10px;">
+              <div class="form-group"><label>C</label><input type="number" step="0.001" id="c_c" value="0.150" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>Si</label><input type="number" step="0.001" id="c_si" value="0.020" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>Mn</label><input type="number" step="0.001" id="c_mn" value="0.450" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>P</label><input type="number" step="0.001" id="c_p" value="0.015" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>S</label><input type="number" step="0.001" id="c_s" value="0.012" oninput="updateCertPreview()"></div>
+            </div>
+
+            <div class="sec-label">Mechanical Properties</div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+              <div class="form-group"><label>Yield (N/mm²)</label><input type="number" id="c_yield" value="415" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>Tensile (N/mm²)</label><input type="number" id="c_tensile" value="490" oninput="updateCertPreview()"></div>
+              <div class="form-group"><label>Elongation (%)</label><input type="number" id="c_elon" value="25" oninput="updateCertPreview()"></div>
+            </div>
+
+            <input type="hidden" id="c_size">
+            <div class="btn-group" style="max-width:300px;">
+              <button type="button" class="btn-print" onclick="printCertificate()">📄 บันทึกและพิมพ์ใบรับรอง (A4)</button>
+            </div>
+          </form>
+
+          <div class="cert-preview-area">
+            <div id="certPreview" class="cert-page"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div><!-- /page-wrap -->
+
+  <script>
+    // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbw0c8rPUCo4uP1RAnPNCCQwACHG_n8VOFSag1fjWxM0-Zl4lDfdvH8kiE8YIt5toR4ivQ/exec';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    let productMasterData = null;
+    const TISI_LOGO   = 'https://www.tisi.go.th/assets/tisi_marks-04-K9NNdtjQ.png';
+    const COMPANY_URL = 'https://appdb.tisi.go.th/Q/i.php?d=1660257339';
+    const QR_CODE     = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(COMPANY_URL);
+
+    // ── API Helper ────────────────────────────────────────────────────────────
+    function apiGet(action) {
+      return fetch(GAS_URL + '?action=' + action).then(r => r.json());
+    }
+    function apiPost(action, data) {
+      const body = new URLSearchParams({ ...data });
+      return fetch(GAS_URL + '?action=' + action, {
+        method: 'POST', body: body
+      }).then(r => r.json());
+    }
+
+    // ── มอก. 107-2566 ────────────────────────────────────────────────────────
+    const FIXED_107 = {
+      tisi:    '107-2566',
+      license: '8911-186/107',
+      company: 'T.Standard steel Co.,Ltd',
+      desc:    'ท่อเหล็กกล้าคาร์บอนสำหรับงานโครงสร้างทั่วไป',
+      type:    'ประเภทมีตะเข็บ',
+      coating: 'ชนิดเคลือบโลหะก่อนขึ้นรูป'
+    };
+
+    // ── มอก. 2817-2562 ───────────────────────────────────────────────────────
+    const FIXED_2817 = {
+      tisi:    '2817-2562',
+      license: 'อยู่ระหว่างดำเนินการ',
+      company: 'T.Standard steel Co.,Ltd',
+      desc:    'เหล็กโครงสร้างเหล็กกล้ารูปตัวซีมีขอบ',
+      style:   'รูปตัวซีมีขอบ',
+      grade:   'G340',
+      coating: 'K06',
+      country: 'ประเทศไทย'
+    };
+
+    window.onload = () => { loadMasterData(); updatePreview(); updateCertPreview(); };
+
+    // ── โหลด Master ──────────────────────────────────────────────────────────
+    function loadMasterData() {
+      setStatus('กำลังโหลดข้อมูลสินค้า...', 'blue');
+      apiGet('getMasterProductData')
+        .then(data => {
+          if (data.error) { setStatus('เกิดข้อผิดพลาด: ' + data.error, 'red'); }
+          else { productMasterData = data; setStatus('พร้อมใช้งาน — ' + Object.keys(data).length + ' รายการ', 'green'); }
+        })
+        .catch(err => setStatus('เชื่อมต่อ GAS ไม่ได้: ' + err.message, 'red'));
+    }
+
+    // ── แท็บ ─────────────────────────────────────────────────────────────────
+    function openTab(evt, tabId) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      evt.currentTarget.classList.add('active');
+    }
+
+    // ── ค้นหาสินค้า ──────────────────────────────────────────────────────────
+    function lookupProduct() {
+      const code    = document.getElementById('product_code').value.toUpperCase();
+      const product = productMasterData ? productMasterData[code] : null;
+      const display = document.getElementById('product_name_display');
+      if (product) {
+        document.getElementById('size').value         = product.size;
+        document.getElementById('style').value        = product.style;
+        document.getElementById('product_name').value = product.product_name;
+        display.textContent  = product.product_name;
+        display.style.color  = '#1a2b4a';
+      } else {
+        document.getElementById('product_name').value = 'ไม่พบข้อมูล';
+        display.textContent = '— ไม่พบรหัสสินค้านี้ —';
+        display.style.color = '#C0392B';
+      }
+      updatePreview();
+    }
+
+    function showSuggestions() {
+      const input = document.getElementById('product_code');
+      const list  = document.getElementById('autocomplete-list');
+      const val   = input.value.toUpperCase();
+      lookupProduct();
+      list.innerHTML = '';
+      if (!val || !productMasterData) { list.style.display = 'none'; return; }
+      let count = 0;
+      for (let code in productMasterData) {
+        if (code.includes(val)) {
+          if (count++ >= 10) break;
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.innerHTML = `<span><strong>${code}</strong></span><span style="color:#6B7E99;">${productMasterData[code].product_name}</span>`;
+          item.onclick = () => { input.value = code; list.style.display = 'none'; lookupProduct(); };
+          list.appendChild(item);
+        }
+      }
+      list.style.display = count > 0 ? 'block' : 'none';
+    }
+
+    // ── Standard Selector ─────────────────────────────────────────────────────
+    function getSelectedStandard() {
+      const r = document.querySelector('input[name="standard"]:checked');
+      return r ? r.value : '107';
+    }
+
+    function switchStandard() {
+      const std = getSelectedStandard();
+      document.getElementById('fields-107').style.display  = std === '107'  ? 'block' : 'none';
+      document.getElementById('fields-2817').style.display = std === '2817' ? 'block' : 'none';
+      document.querySelectorAll('.std-card').forEach(c => c.classList.remove('selected'));
+      const card = document.querySelector(`.std-card[data-std="${std}"]`);
+      if (card) card.classList.add('selected');
+      updatePreview();
+    }
+
+    // ── Preview ───────────────────────────────────────────────────────────────
+    function updatePreview() {
+      getSelectedStandard() === '2817' ? updatePreview2817() : updatePreview107();
+    }
+
+    function updatePreview107() {
+      const surface = document.getElementById('surface_coating').value.trim();
+      const lot     = document.getElementById('lot_no').value.trim();
+      const size    = document.getElementById('size').value;
+      const style   = document.getElementById('style').value;
+      const grade   = document.getElementById('grade').value;
+
+      let sizeDisplay = 'ขนาด ' + (size || '---');
+      if (surface) sizeDisplay += ' ' + surface;
+      if (lot)     sizeDisplay += ' ' + lot;
+
+      const details = [
+        FIXED_107.desc, sizeDisplay, style || '---',
+        FIXED_107.type, FIXED_107.coating,
+        'ชั้นคุณภาพ ' + grade, 'ใบอนุญาตเลขที่ ' + FIXED_107.license
+      ];
+      renderSticker(FIXED_107.tisi, FIXED_107.company, details);
+    }
+
+    function updatePreview2817() {
+      const lot  = document.getElementById('lot_no').value.trim();
+      const size = document.getElementById('size').value;
+
+      const details = [
+        FIXED_2817.desc,
+        'ขนาด ' + (size || '---') + ' มม.' + (lot ? '  รุ่น ' + lot : ''),
+        'แบบ ' + FIXED_2817.style + '  ชั้นคุณภาพ ' + FIXED_2817.grade,
+        'มวลโลหะเคลือบ ' + FIXED_2817.coating + '  ' + FIXED_2817.country,
+        'ใบอนุญาตเลขที่ ' + FIXED_2817.license
+      ];
+      renderSticker(FIXED_2817.tisi, FIXED_2817.company, details);
+    }
+
+    function renderSticker(tisi, company, details) {
+      document.getElementById('stickerPreview').innerHTML = `
+        <div class="sticker-content">
+          <div class="left-panel">
+            <div class="sticker-logo"><img src="${TISI_LOGO}"></div>
+            <div class="sticker-qr"><img src="${QR_CODE}"></div>
+          </div>
+          <div class="right-panel">
+            <div class="tisi-no">มอก.${tisi}</div>
+            <div class="company">${company}</div>
+            <div class="details-area">
+              ${details.map(d => `<div class="product-details">${d}</div>`).join('')}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ── Print Sticker ─────────────────────────────────────────────────────────
+    function printSticker() {
+      if (!document.getElementById('size').value || document.getElementById('product_name').value === 'ไม่พบข้อมูล') {
+        alert('กรุณาเลือกข้อมูลสินค้าที่ถูกต้อง'); return;
+      }
+      const std = getSelectedStandard();
+      let data;
+      if (std === '2817') {
+        data = {
+          tisi_no: FIXED_2817.tisi, company: FIXED_2817.company,
+          product_desc: FIXED_2817.desc, surface_coating: FIXED_2817.coating,
+          lot_no: document.getElementById('lot_no').value,
+          size: document.getElementById('size').value,
+          style: FIXED_2817.style, type: FIXED_2817.country,
+          coating: FIXED_2817.coating, grade: FIXED_2817.grade,
+          license_no: FIXED_2817.license
+        };
+      } else {
+        data = {
+          tisi_no: FIXED_107.tisi, company: FIXED_107.company,
+          product_desc: FIXED_107.desc, type: FIXED_107.type,
+          coating: FIXED_107.coating, license_no: FIXED_107.license,
+          surface_coating: document.getElementById('surface_coating').value,
+          lot_no: document.getElementById('lot_no').value,
+          grade: document.getElementById('grade').value,
+          size: document.getElementById('size').value,
+          style: document.getElementById('style').value
+        };
+      }
+      setStatus('กำลังบันทึก...', 'blue');
+      apiPost('recordData', data)
+        .then(res => {
+          if (res.success) { startPrintProcess('print-mode-sticker'); setStatus('บันทึกและพร้อมพิมพ์', 'green'); }
+          else { setStatus('เกิดข้อผิดพลาด: ' + res.message, 'red'); }
+        })
+        .catch(err => setStatus('บันทึกไม่ได้: ' + err.message, 'red'));
+    }
+
+    function startPrintProcess(modeClass) {
+      window.onafterprint = () => { document.body.className = 'idle-mode'; };
+      document.body.className = modeClass;
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => { if (document.body.className !== 'idle-mode') document.body.className = 'idle-mode'; }, 1500);
+      }, 800);
+    }
+
+    // ── Certificate ───────────────────────────────────────────────────────────
+    function showSuggestionsCert() {
+      const input = document.getElementById('c_product_code');
+      const list  = document.getElementById('autocomplete-list-cert');
+      const val   = input.value.toUpperCase();
+      list.innerHTML = '';
+      if (!val || !productMasterData) { list.style.display = 'none'; return; }
+      let count = 0;
+      for (let code in productMasterData) {
+        if (code.includes(val)) {
+          if (count++ >= 5) break;
+          const item = document.createElement('div');
+          item.className = 'autocomplete-item';
+          item.innerHTML = `<strong>${code}</strong> — ${productMasterData[code].product_name}`;
+          item.onclick = () => {
+            input.value = code;
+            document.getElementById('c_product_name').value = productMasterData[code].product_name;
+            document.getElementById('c_size').value = productMasterData[code].size;
+            list.style.display = 'none';
+            updateCertPreview();
+          };
+          list.appendChild(item);
+        }
+      }
+      list.style.display = count > 0 ? 'block' : 'none';
+    }
+
+    function updateCertPreview() {
+      const customer    = document.getElementById('c_customer').value || '(ระบุชื่อลูกค้า)';
+      const productName = document.getElementById('c_product_name').value || '---';
+      const size        = document.getElementById('c_size').value || '---';
+      document.getElementById('certPreview').innerHTML = `
+        <div style="text-align:center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:20px;">
+          <h2 style="margin:0;">MILL TEST CERTIFICATE</h2>
+          <h3 style="margin:5px 0;">${FIXED_107.company}</h3>
+        </div>
+        <table style="width:100%; margin-bottom:20px;">
+          <tr><td><b>Date:</b> ${new Date().toLocaleDateString('th-TH')}</td><td style="text-align:right;"><b>Standard:</b> TIS ${FIXED_107.tisi}</td></tr>
+          <tr><td><b>Customer:</b> ${customer}</td><td style="text-align:right;"><b>No:</b> QC-TST-${Date.now().toString().slice(-6)}</td></tr>
+        </table>
+        <table border="1" style="width:100%; border-collapse:collapse; margin-bottom:20px; text-align:center;">
+          <tr style="background:#eee;"><th>Description</th><th>Size</th><th>Grade</th></tr>
+          <tr><td style="padding:10px;">${productName}</td><td>${size}</td><td>STKR400</td></tr>
+        </table>
+        <b>CHEMICAL ANALYSIS (%)</b>
+        <table border="1" style="width:100%; border-collapse:collapse; margin:10px 0 20px; text-align:center;">
+          <tr style="background:#eee;"><th>C</th><th>Si</th><th>Mn</th><th>P</th><th>S</th></tr>
+          <tr>
+            <td>${document.getElementById('c_c').value}</td>
+            <td>${document.getElementById('c_si').value}</td>
+            <td>${document.getElementById('c_mn').value}</td>
+            <td>${document.getElementById('c_p').value}</td>
+            <td>${document.getElementById('c_s').value}</td>
+          </tr>
+        </table>
+        <b>MECHANICAL PROPERTIES</b>
+        <table border="1" style="width:100%; border-collapse:collapse; margin-top:10px; text-align:center;">
+          <tr style="background:#eee;"><th>Yield (N/mm²)</th><th>Tensile (N/mm²)</th><th>Elon (%)</th></tr>
+          <tr>
+            <td>${document.getElementById('c_yield').value}</td>
+            <td>${document.getElementById('c_tensile').value}</td>
+            <td>${document.getElementById('c_elon').value}</td>
+          </tr>
+        </table>`;
+    }
+
+    function printCertificate() {
+      const data = {
+        customer_name: document.getElementById('c_customer').value,
+        product_code:  document.getElementById('c_product_code').value,
+        product_name:  document.getElementById('c_product_name').value,
+        size:          document.getElementById('c_size').value,
+        chem_c:  document.getElementById('c_c').value,
+        chem_si: document.getElementById('c_si').value,
+        chem_mn: document.getElementById('c_mn').value,
+        chem_p:  document.getElementById('c_p').value,
+        chem_s:  document.getElementById('c_s').value,
+        mech_yield:   document.getElementById('c_yield').value,
+        mech_tensile: document.getElementById('c_tensile').value,
+        mech_elon:    document.getElementById('c_elon').value
+      };
+      setStatus('กำลังบันทึก...', 'blue');
+      apiPost('recordCertData', data)
+        .then(res => {
+          if (res.success) { startPrintProcess('print-mode-cert'); setStatus('บันทึกและพร้อมพิมพ์', 'green'); }
+          else { setStatus('เกิดข้อผิดพลาด: ' + res.message, 'red'); }
+        })
+        .catch(err => setStatus('บันทึกไม่ได้: ' + err.message, 'red'));
+    }
+
+    // ── Status ────────────────────────────────────────────────────────────────
+    function setStatus(msg, color) {
+      const s = document.getElementById('status-message');
+      s.textContent = msg;
+      const styles = {
+        green:  { color: '#1B6B3A', bg: '#EDFAF1', border: '#B7E4C7' },
+        red:    { color: '#A93226', bg: '#FDEDEC', border: '#F1948A' },
+        blue:   { color: '#1A5276', bg: '#EBF5FB', border: '#AED6F1' },
+        orange: { color: '#7D6608', bg: '#FEF9E7', border: '#F9E79F' }
+      };
+      const st = styles[color] || styles.blue;
+      s.style.color = st.color; s.style.background = st.bg; s.style.borderColor = st.border;
+    }
+
+    // ── Close autocomplete on outside click ───────────────────────────────────
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.form-group')) {
+        document.querySelectorAll('.autocomplete-list').forEach(l => l.style.display = 'none');
+      }
+    });
+  </script>
+</body>
+</html>
