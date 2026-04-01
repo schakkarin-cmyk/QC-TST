@@ -24,10 +24,13 @@
   /* ── SIDEBAR ────────────────────────────────────────────────── */
   .sidebar {
     width: 240px; flex-shrink: 0;
-    background: linear-gradient(180deg, #00305C 0%, #004B8D 50%, #003878 100%);
+    background: linear-gradient(180deg, #0D2657 0%, #1A3A7A 40%, #0F2860 100%);
     display: flex; flex-direction: column;
     position: fixed; top: 0; left: 0; bottom: 0;
     z-index: 200; overflow: hidden;
+    border-right: 3px solid transparent;
+    border-image: linear-gradient(180deg, #FF6B6B 0%, #FFB3B3 25%, #CC0000 50%, #FF8080 75%, #990000 100%) 1;
+    box-shadow: 2px 0 12px rgba(200,0,0,0.40), inset -1px 0 6px rgba(255,80,80,0.15);
   }
 
   .sidebar-brand {
@@ -35,18 +38,18 @@
     border-bottom: 1px solid rgba(255,255,255,0.10);
   }
   .sidebar-logo-wrap {
-    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 10px;
   }
   .sidebar-logo {
-    height: 46px; width: auto; object-fit: contain;
-    background: white; border-radius: 8px; padding: 3px 6px;
+    height: 80px; width: auto; object-fit: contain;
+    filter: brightness(0) invert(1) drop-shadow(0 0 6px rgba(255,255,255,0.8)) drop-shadow(0 0 14px rgba(255,255,255,0.4));
   }
   .sidebar-brand-title {
     font-size: 13px; font-weight: 800; color: #fff;
-    line-height: 1.25; letter-spacing: 0.2px;
+    line-height: 1.25; letter-spacing: 0.2px; text-align: center;
   }
   .sidebar-brand-sub {
-    font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 1px;
+    font-size: 10px; color: rgba(255,255,255,0.55); margin-top: 1px; text-align: center;
   }
 
   .sidebar-standards {
@@ -386,7 +389,7 @@
              alt="TST Logo">
       </div>
       <div class="sidebar-brand-title">ระบบควบคุมคุณภาพ</div>
-      <div class="sidebar-brand-sub">QC-TST · T.Standard Steel Co.,Ltd</div>
+      <div class="sidebar-brand-sub">บริษัท ที.แสตนดาร์ด สตีล จำกัด</div>
     </div>
 
     <div class="sidebar-standards">
