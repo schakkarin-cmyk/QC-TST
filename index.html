@@ -325,7 +325,7 @@
   }
   .tisi-no      { font-weight: bold; font-size: 8.5pt; line-height: 1.1; margin: 0; color: #000; }
   .company      { font-weight: bold; font-size: 7.2pt; line-height: 1.1; margin: 0 0 0.8mm 0; color: #000; }
-  .details-area { display: flex; flex-direction: column; }
+  .details-area { display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
   .product-details { font-size: 5.2pt; line-height: 1.25; margin: 0; white-space: nowrap; color: #000; }
 
   /* ══════════════════════════════════════════════════════════
@@ -522,6 +522,10 @@
                     <div class="form-group"><label>แบบ (Style)</label><input type="text" value="รูปตัวซีมีขอบ" readonly></div>
                     <div class="form-group"><label>ประเทศที่ทำ</label><input type="text" value="ประเทศไทย" readonly></div>
                   </div>
+                  <div class="form-group">
+                    <label for="license_2817">เลขที่ใบอนุญาต</label>
+                    <input type="text" id="license_2817" placeholder="เช่น 1234-567/2817" value="xxxxxxxx" oninput="updatePreview()">
+                  </div>
                 </div>
 
                 <div class="btn-group">
@@ -672,9 +676,9 @@
     // ── มอก. 2817-2562 ───────────────────────────────────────────────────────
     const FIXED_2817 = {
       tisi:    '2817-2562',
-      license: 'อยู่ระหว่างดำเนินการ',
+      license: 'xxxxxxxx',
       company: 'T.Standard steel Co.,Ltd',
-      desc:    'เหล็กโครงสร้างเหล็กกล้ารูปตัวซีมีขอบ',
+      desc:    'เหล็กโครงสร้างรูปพรรณขึ้นรูปเย็นเคลือบโลหะสำหรับงานโครงสร้างทั่วไป',
       style:   'รูปตัวซีมีขอบ',
       grade:   'G340',
       coating: 'K06',
@@ -790,18 +794,19 @@
     }
 
     function updatePreview2817() {
-      const lot  = document.getElementById('lot_no').value.trim();
-      const size = document.getElementById('size').value;
+      const lot     = document.getElementById('lot_no').value.trim();
+      const size    = document.getElementById('size').value;
+      const license = document.getElementById('license_2817').value.trim() || 'xxxxxxxx';
 
       const details = [
         FIXED_2817.desc,
-        'ขนาด ' + (size || '---') + ' มม.' + (lot ? '  รุ่น ' + lot : ''),
-        'แบบ ' + FIXED_2817.style + '  ชั้นคุณภาพ ' + FIXED_2817.grade,
-        'มวลโลหะเคลือบ ' + FIXED_2817.coating + '  ' + FIXED_2817.country,
-        'ใบอนุญาตเลขที่ ' + FIXED_2817.license
+        'ขนาด : ' + (size || '---') + (lot ? '  ล็อต : ' + lot : ''),
+        'แบบ : ' + FIXED_2817.style,
+        'ชั้นคุณภาพ : ' + FIXED_2817.grade,
+        'ใบอนุญาต ' + license
       ];
       renderSticker(FIXED_2817.tisi, FIXED_2817.company, details);
-      updateInfoBox('2817', size, lot, FIXED_2817.license);
+      updateInfoBox('2817', size, lot, license);
     }
 
     function renderSticker(tisi, company, details) {
@@ -845,7 +850,7 @@
           size: document.getElementById('size').value,
           style: FIXED_2817.style, type: FIXED_2817.country,
           coating: FIXED_2817.coating, grade: FIXED_2817.grade,
-          license_no: FIXED_2817.license
+          license_no: document.getElementById('license_2817').value.trim() || 'xxxxxxxx'
         };
       } else {
         data = {
