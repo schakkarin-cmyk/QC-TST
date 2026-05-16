@@ -710,7 +710,7 @@
 
   <script>
     // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyRepJMCoSpOwmr5eYJak7PL05q0_AiLNK2fJ8JiU-cxKbTnTvqYYcmrsNeyS3BMzPa/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxPENe7q5TGd7i1fvnq9340TIJN4VcFgodlR28DyKSbUhWTSk5CgjolyEddl-eI9X4h/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     let productMasterData = null;
@@ -1102,6 +1102,7 @@
             return;
           }
           mechCurrentData = res.data || [];
+          if (res._dbg) document.getElementById('mech-status').textContent += ' | ' + res._dbg;
           if (mechCurrentData.length === 0) {
             statusEl.textContent = '⚠️ ไม่พบแผนการผลิตในวันที่นี้';
             document.getElementById('mech-table-area').innerHTML =
