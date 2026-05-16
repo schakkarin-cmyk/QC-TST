@@ -7,9 +7,8 @@ const SPREADSHEET_ID    = '1XbVkIvZhJP0ANcO0ehUq7ebDF_cOqyl3IIoP_Mvp_qo';
 const SHEET_NAME_STICKER = 'บันทึกการพิมพ์';
 const SHEET_NAME_CERT    = 'บันทึกใบรับรอง';
 const MASTER_SHEET_NAME  = 'Master Product';
-const PLAN_SPREADSHEET_ID = '1uLXHWv6_jTb1wnaIzq652gn2gH0Odiw2KOlB8DyY2Us';
-const PLAN_SHEET_NAME_WH  = 'Sheet Plan';
-const QC_STD_SHEET_NAME   = 'TST-QC Standard Master';
+const PLAN_SHEET_NAME_WH  = 'Plan';
+const QC_STD_SHEET_NAME   = 'StandardTST';
 const MECH_LOG_SHEET_NAME = 'บันทึกคุณสมบัติทางกล';
 
 // ============================================================
@@ -180,16 +179,14 @@ function getPlanByDateForQC(dateStr) {
     if (!dateStr) throw new Error('กรุณาระบุวันที่');
 
     // อ่านชีต Plan จาก FlowWH Spreadsheet
-    const ssPlan    = SpreadsheetApp.openById(PLAN_SPREADSHEET_ID);
-    const planSheet = ssPlan.getSheetByName(PLAN_SHEET_NAME_WH);
+    const ss        = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const planSheet = ss.getSheetByName(PLAN_SHEET_NAME_WH);
     if (!planSheet) throw new Error('ไม่พบชีต "' + PLAN_SHEET_NAME_WH + '"');
 
     const planValues = planSheet.getDataRange().getValues();
 
-    // อ่าน TST-QC Standard Master → ชื่อ (col C=2) และความหนา (col K=10)
-    // ชีตนี้อยู่ใน QC spreadsheet (SPREADSHEET_ID)
-    const ssQC   = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const qcSheet = ssQC.getSheetByName(QC_STD_SHEET_NAME);
+    // อ่าน StandardTST → ชื่อ (col C=2) และความหนา (col K=10)
+    const qcSheet = ss.getSheetByName(QC_STD_SHEET_NAME);
     const stdMap = {}; // code -> { thick, name }
     if (qcSheet) {
       const qcVals = qcSheet.getDataRange().getValues();
