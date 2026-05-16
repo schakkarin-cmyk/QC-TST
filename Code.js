@@ -186,17 +186,19 @@ function getPlanByDateForQC(dateStr) {
 
     const planValues = planSheet.getDataRange().getValues();
 
-    // อ่าน TST-QC Standard Master → ความหนา (คอลัมน์ K = index 10)
-    const ssQC    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    // อ่าน TST-QC Standard Master → ชื่อ (col C=2) และความหนา (col K=10)
+    // ชีตนี้อยู่ใน QC spreadsheet (SPREADSHEET_ID)
+    const ssQC   = SpreadsheetApp.openById(SPREADSHEET_ID);
     const qcSheet = ssQC.getSheetByName(QC_STD_SHEET_NAME);
-    const thicknessMap = {};
+    const stdMap = {}; // code -> { thick, name }
     if (qcSheet) {
       const qcVals = qcSheet.getDataRange().getValues();
       for (let i = 1; i < qcVals.length; i++) {
         const row   = qcVals[i];
         const code  = row[0] ? row[0].toString().trim().toUpperCase() : null;
-        const thick = (row[10] != null && row[10] !== '') ? row[10].toString().trim() : null;
-        if (code && thick) thicknessMap[code] = thick;
+        const name  = row[2] ? row[2].toString().trim() : '';   // col C
+        const thick = (row[10] != null && row[10] !== '') ? row[10].toString().trim() : null; // col K
+        if (code) stdMap[code] = { thick: thick || 'ไม่ระบุ', name: name || code };
       }
     }
 
@@ -232,12 +234,13 @@ function getPlanByDateForQC(dateStr) {
       return { success: true, data: [], message: 'ไม่พบแผนการผลิตในวันที่นี้' };
     }
 
-    // จัดกลุ่มตามความหนา
-    const groups = {};
+    // จัดกลุ่มตามความหนา แสดงชื่อสินค้า (col C) ไม่แสดงรหัส
+    const groups = {}; // thick -> [name, ...]
     for (const code of productCodes) {
-      const thick = thicknessMap[code] || 'ไม่ระบุ';
+      const info  = stdMap[code] || { thick: 'ไม่ระบุ', name: code };
+      const thick = info.thick;
       if (!groups[thick]) groups[thick] = [];
-      groups[thick].push(code);
+      groups[thick].push(info.name);
     }
 
     const result = Object.keys(groups)
