@@ -7,6 +7,10 @@ const SPREADSHEET_ID    = '1XbVkIvZhJP0ANcO0ehUq7ebDF_cOqyl3IIoP_Mvp_qo';
 const SHEET_NAME_STICKER = 'บันทึกการพิมพ์';
 const SHEET_NAME_CERT    = 'บันทึกใบรับรอง';
 const MASTER_SHEET_NAME  = 'Master Product';
+const PLAN_SPREADSHEET_ID = '1uLXHWv6_jTb1wnaIzq652gn2gH0Odiw2KOlB8DyY2Us';
+const PLAN_SHEET_NAME_WH  = 'Sheet Plan';
+const QC_STD_SHEET_NAME   = 'TST-QC Standard Master';
+const MECH_LOG_SHEET_NAME = 'บันทึกคุณสมบัติทางกล';
 
 // ============================================================
 // doGet — รับ GET request จาก frontend
@@ -17,6 +21,11 @@ function doGet(e) {
   if (action === 'getMasterProductData') {
     const data = getMasterProductData();
     return jsonResponse(data);
+  }
+
+  if (action === 'getPlanByDate') {
+    const date = (e && e.parameter && e.parameter.date) ? e.parameter.date : '';
+    return jsonResponse(getPlanByDateForQC(date));
   }
 
   // health check
@@ -36,6 +45,10 @@ function doPost(e) {
 
   if (action === 'recordCertData') {
     return jsonResponse(recordCertData(params));
+  }
+
+  if (action === 'recordMechData') {
+    return jsonResponse(recordMechData(params));
   }
 
   return jsonResponse({ success: false, message: 'Unknown action: ' + action });
@@ -156,5 +169,126 @@ function getMasterProductData() {
     return productMaster;
   } catch (e) {
     return { error: e.message };
+  }
+}
+
+// ============================================================
+// getPlanByDateForQC — ดึงแผนการผลิตและจัดกลุ่มตามความหนา
+// ============================================================
+function getPlanByDateForQC(dateStr) {
+  try {
+    if (!dateStr) throw new Error('กรุณาระบุวันที่');
+
+    // อ่านชีต Plan จาก FlowWH Spreadsheet
+    const ssPlan    = SpreadsheetApp.openById(PLAN_SPREADSHEET_ID);
+    const planSheet = ssPlan.getSheetByName(PLAN_SHEET_NAME_WH);
+    if (!planSheet) throw new Error('ไม่พบชีต "' + PLAN_SHEET_NAME_WH + '"');
+
+    const planValues = planSheet.getDataRange().getValues();
+
+    // อ่าน TST-QC Standard Master → ความหนา (คอลัมน์ K = index 10)
+    const ssQC    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const qcSheet = ssQC.getSheetByName(QC_STD_SHEET_NAME);
+    const thicknessMap = {};
+    if (qcSheet) {
+      const qcVals = qcSheet.getDataRange().getValues();
+      for (let i = 1; i < qcVals.length; i++) {
+        const row   = qcVals[i];
+        const code  = row[0] ? row[0].toString().trim().toUpperCase() : null;
+        const thick = (row[10] != null && row[10] !== '') ? row[10].toString().trim() : null;
+        if (code && thick) thicknessMap[code] = thick;
+      }
+    }
+
+    // กรองรายการตามวันที่
+    const productCodes = new Set();
+    for (let i = 1; i < planValues.length; i++) {
+      const row     = planValues[i];
+      const dateVal = row[0];
+      if (dateVal == null || dateVal === '') continue;
+
+      let rowDateStr = '';
+      if (dateVal instanceof Date) {
+        rowDateStr = Utilities.formatDate(dateVal, 'Asia/Bangkok', 'yyyy-MM-dd');
+      } else {
+        const s = dateVal.toString().trim();
+        if (s.length === 8 && /^\d{8}$/.test(s)) {
+          rowDateStr = s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
+        } else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          rowDateStr = s;
+        } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
+          const p = s.split('/');
+          rowDateStr = p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
+        }
+      }
+
+      if (rowDateStr !== dateStr) continue;
+
+      const code = row[4] ? row[4].toString().trim().toUpperCase() : null;
+      if (code) productCodes.add(code);
+    }
+
+    if (productCodes.size === 0) {
+      return { success: true, data: [], message: 'ไม่พบแผนการผลิตในวันที่นี้' };
+    }
+
+    // จัดกลุ่มตามความหนา
+    const groups = {};
+    for (const code of productCodes) {
+      const thick = thicknessMap[code] || 'ไม่ระบุ';
+      if (!groups[thick]) groups[thick] = [];
+      groups[thick].push(code);
+    }
+
+    const result = Object.keys(groups)
+      .sort((a, b) => {
+        const fa = parseFloat(a), fb = parseFloat(b);
+        return (isNaN(fa) ? 999 : fa) - (isNaN(fb) ? 999 : fb);
+      })
+      .map(thick => ({ thickness: thick, products: groups[thick].sort() }));
+
+    return { success: true, data: result, message: 'พบ ' + productCodes.size + ' รายการ' };
+
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ============================================================
+// recordMechData — บันทึกผลตรวจคุณสมบัติทางกลวัตถุดิบ
+// ============================================================
+function recordMechData(formData) {
+  try {
+    const ss  = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(MECH_LOG_SHEET_NAME);
+    if (!sheet) { sheet = ss.insertSheet(MECH_LOG_SHEET_NAME); }
+
+    if (sheet.getLastRow() === 0) {
+      const headers = ['วันที่บันทึก','วันที่ผลิต','ความหนา','ล็อต','Yield (MPa)','Tensile (MPa)','Elongation (%)','สินค้ารายการ'];
+      sheet.appendRow(headers);
+      sheet.getRange(1, 1, 1, headers.length)
+           .setFontWeight('bold').setBackground('#7B2D8B').setFontColor('#ffffff');
+    }
+
+    const rows     = JSON.parse(formData.rows || '[]');
+    const prodDate = formData.prod_date || '';
+    const now      = new Date();
+
+    for (const row of rows) {
+      sheet.appendRow([
+        now,            prodDate,
+        row.thickness  || '',
+        row.lot        || '',
+        row.yield      || '',
+        row.tensile    || '',
+        row.elongation || '',
+        row.products   || ''
+      ]);
+    }
+
+    sheet.autoResizeColumns(1, 8);
+    return { success: true, message: 'บันทึกสำเร็จ ' + rows.length + ' รายการ' };
+  } catch (err) {
+    return { success: false, message: err.toString() };
   }
 }
