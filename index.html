@@ -710,7 +710,7 @@
 
   <script>
     // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzo6aQtLOyBUGAdD1tf6ZFLS3oHNSFmv2xycSdFjLXm9kdskUCoDVHgt8GW1QeIykO-iQ/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxCitMjJTzgtGDXUc885PVcbUsFUoQ5tTZRvsLnMO6VFV2AoKv55Bgf8ygFu3d6pichLg/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     let productMasterData = null;
@@ -1176,7 +1176,7 @@
                     display:inline-block; padding:5px 10px;
                     background:#EBF4FF; border:1px solid #AED6F1;
                     border-radius:6px; font-size:13px; font-weight:600;
-                    color:#1a2b4a; white-space:nowrap;">${p}</span>`).join('')}
+                    color:#1a2b4a; white-space:nowrap;">${p.name}</span>`).join('')}
                 </div>
               </td>
             </tr>`;
@@ -1202,7 +1202,7 @@
         yield:      getMechInputVal('yield', idx),
         tensile:    getMechInputVal('tensile', idx),
         elongation: getMechInputVal('elongation', idx),
-        products:   row.products.join(', ')
+        products:   JSON.stringify(row.products)
       }));
       setStatus('กำลังบันทึก...', 'blue');
       apiPost('recordMechData', { prod_date: mechCurrentDate, rows: JSON.stringify(rows) })

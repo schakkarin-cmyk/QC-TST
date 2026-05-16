@@ -231,13 +231,13 @@ function getPlanByDateForQC(dateStr) {
       return { success: true, data: [], message: 'ไม่พบแผนการผลิตในวันที่นี้' };
     }
 
-    // จัดกลุ่มตามความหนา แสดงชื่อสินค้า (col C) ไม่แสดงรหัส
-    const groups = {}; // thick -> [name, ...]
+    // จัดกลุ่มตามความหนา เก็บทั้งรหัสและชื่อสินค้า
+    const groups = {}; // thick -> [{code, name}, ...]
     for (const code of productCodes) {
       const info  = stdMap[code] || { thick: 'ไม่ระบุ', name: code };
       const thick = info.thick;
       if (!groups[thick]) groups[thick] = [];
-      groups[thick].push(info.name);
+      groups[thick].push({ code: code, name: info.name });
     }
 
     const result = Object.keys(groups)
@@ -245,7 +245,7 @@ function getPlanByDateForQC(dateStr) {
         const fa = parseFloat(a), fb = parseFloat(b);
         return (isNaN(fa) ? 999 : fa) - (isNaN(fb) ? 999 : fb);
       })
-      .map(thick => ({ thickness: thick, products: groups[thick].sort() }));
+      .map(thick => ({ thickness: thick, products: groups[thick].sort((a,b) => a.name.localeCompare(b.name)) }));
 
     return {
       success: true, data: result,
@@ -268,7 +268,7 @@ function recordMechData(formData) {
     if (!sheet) { sheet = ss.insertSheet(MECH_LOG_SHEET_NAME); }
 
     if (sheet.getLastRow() === 0) {
-      const headers = ['วันที่บันทึก','วันที่ผลิต','ความหนา','ล็อต','Yield (MPa)','Tensile (MPa)','Elongation (%)','สินค้ารายการ'];
+      const headers = ['วันที่บันทึก','วันที่ผลิต','ความหนา','ล็อต','Yield (MPa)','Tensile (MPa)','Elongation (%)','รหัสสินค้า','ชื่อสินค้า'];
       sheet.appendRow(headers);
       sheet.getRange(1, 1, 1, headers.length)
            .setFontWeight('bold').setBackground('#7B2D8B').setFontColor('#ffffff');
@@ -279,15 +279,19 @@ function recordMechData(formData) {
     const now      = new Date();
 
     for (const row of rows) {
-      sheet.appendRow([
-        now,            prodDate,
-        row.thickness  || '',
-        row.lot        || '',
-        row.yield      || '',
-        row.tensile    || '',
-        row.elongation || '',
-        row.products   || ''
-      ]);
+      const products = JSON.parse(row.products || '[]');
+      for (const prod of products) {
+        sheet.appendRow([
+          now,            prodDate,
+          row.thickness  || '',
+          row.lot        || '',
+          row.yield      || '',
+          row.tensile    || '',
+          row.elongation || '',
+          prod.code      || '',
+          prod.name      || ''
+        ]);
+      }
     }
 
     sheet.autoResizeColumns(1, 8);
