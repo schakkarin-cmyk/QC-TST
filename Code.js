@@ -120,7 +120,8 @@ function recordCertData(formData) {
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         'วันที่บันทึก', 'ชื่อลูกค้า', 'รหัสสินค้า', 'ชื่อสินค้า', 'ขนาด',
-        'Lot / Heat No.', 'C', 'Si', 'Mn', 'P', 'S', 'Yield', 'Tensile', 'Elongation'
+        'Lot / Heat No.', 'S/O No.', 'วันที่ส่ง', 'จำนวนส่ง',
+        'C', 'Si', 'Mn', 'P', 'S', 'Yield', 'Tensile', 'Elongation'
       ]);
     }
 
@@ -131,6 +132,9 @@ function recordCertData(formData) {
       formData.product_name   || '',
       formData.size           || '',
       formData.lot_no         || '',
+      formData.so_no          || '',
+      formData.delivery_date  || '',
+      formData.delivery_qty   || '',
       formData.chem_c         || '',
       formData.chem_si        || '',
       formData.chem_mn        || '',

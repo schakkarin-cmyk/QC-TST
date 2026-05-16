@@ -299,8 +299,8 @@
   /* ── CERT AREA ───────────────────────────────────────────────── */
   .cert-preview-area { margin-top: 24px; overflow-x: auto; background: #c8d0de; padding: 28px; border-radius: 10px; }
   .cert-page {
-    width: 210mm; min-height: 297mm; background: white; margin: 0 auto; padding: 14mm 16mm;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.25); font-size: 12px; text-align: left; position: relative;
+    width: 277mm; min-height: 190mm; background: white; margin: 0 auto; padding: 6mm 8mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25); font-size: 10px; text-align: left; position: relative;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
 
@@ -626,6 +626,21 @@
               <div class="form-group">
                 <label>ชื่อสินค้า (Product Name)</label>
                 <input type="text" id="c_product_name" readonly>
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px;">
+                <div class="form-group">
+                  <label>S/O No.</label>
+                  <input type="text" id="c_so_no" placeholder="เลขที่ใบสั่งขาย" oninput="updateCertPreview()">
+                </div>
+                <div class="form-group">
+                  <label>วันที่ส่ง (Delivery Date)</label>
+                  <input type="date" id="c_delivery_date" oninput="updateCertPreview()">
+                </div>
+                <div class="form-group">
+                  <label>จำนวนส่ง (Delivery Qty.)</label>
+                  <input type="text" id="c_delivery_qty" placeholder="เช่น 100 pcs" oninput="updateCertPreview()">
+                </div>
               </div>
 
               <div class="sec-label">ข้อมูล Coil วัตถุดิบ</div>
@@ -1049,185 +1064,236 @@
     }
 
     function updateCertPreview() {
-      const customer    = document.getElementById('c_customer').value  || '(ระบุชื่อลูกค้า)';
-      const productName = document.getElementById('c_product_name').value || '---';
-      const size        = document.getElementById('c_size').value        || '---';
-      const lotNo       = document.getElementById('c_lot').value         || '---';
-      const certNo      = 'MTC-' + new Date().getFullYear() + '-' + Date.now().toString().slice(-6);
-      const today       = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+      const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+
+      const customer  = gv('c_customer')      || '';
+      const size      = gv('c_size')          || '';
+      const lotNo     = gv('c_lot')           || '';
+      const soNo      = gv('c_so_no')         || '';
+      const delivDate = gv('c_delivery_date') || '';
+      const delivQty  = gv('c_delivery_qty')  || '';
+      const certNo    = 'CT' + new Date().getFullYear() + Date.now().toString().slice(-7);
+
+      // แปลง delivery date เป็น dd/mm/yyyy
+      let delivDateFmt = delivDate;
+      if (delivDate) {
+        const p = delivDate.split('-');
+        delivDateFmt = p[2] + '/' + p[1] + '/' + p[0];
+      }
+
+      // Parse size → dimensions (e.g. "38X38X1.4" or "50X30X2.0X6000")
+      let dimA = '', dimB = '', thick = '', tubeLen = '6,020';
+      if (size) {
+        const parts = size.split(/[Xx×]/);
+        dimA  = parts[0] ? parts[0].trim() : '';
+        dimB  = parts[1] ? parts[1].trim() : '';
+        thick = parts[2] ? parts[2].trim() : '';
+        if (parts[3]) tubeLen = parts[3].trim();
+      }
 
       const LOGO = 'https://static.wixstatic.com/media/5a1d18_237433e7b53841cca74e8f402795c4ca~mv2.png/v1/fit/w_2500,h_1330,al_c/5a1d18_237433e7b53841cca74e8f402795c4ca~mv2.png';
-      const TISI = 'https://www.tisi.go.th/assets/tisi_marks-04-K9NNdtjQ.png';
+      const v = id => { const el = document.getElementById(id); return el ? (el.value || '-') : '-'; };
 
-      const v = id => document.getElementById(id).value || '-';
+      // shared cell style
+      const td  = 'padding:3px 5px; border:1px solid #000;';
+      const tdC = 'padding:3px 5px; border:1px solid #000; text-align:center;';
+      const thC = 'padding:3px 5px; border:1px solid #000; text-align:center; font-weight:bold; background:#d0d0d0;';
 
       document.getElementById('certPreview').innerHTML = `
-        <div style="font-family:'Sarabun',Arial,sans-serif; color:#111; line-height:1.5;">
+        <div style="font-family:Arial,sans-serif; font-size:9.5px; color:#000; line-height:1.3; -webkit-print-color-adjust:exact; print-color-adjust:exact;">
 
-          <!-- ═══ HEADER ═══ -->
-          <div style="display:flex; align-items:center; justify-content:space-between;
-                      border-bottom:3px solid #002a6e; padding-bottom:7px; margin-bottom:8px;">
-            <div style="min-width:110px;">
-              <img src="${LOGO}" alt="TST" style="height:44px; width:auto; object-fit:contain;"
-                   onerror="this.replaceWith(document.createTextNode('TST'))">
-            </div>
-            <div style="text-align:center; flex:1; padding:0 14px;">
-              <div style="font-size:8.5px; letter-spacing:3px; color:#555; text-transform:uppercase; margin-bottom:1px;">ใบรับรองคุณภาพผลิตภัณฑ์เหล็ก</div>
-              <div style="font-size:20px; font-weight:900; color:#002a6e; letter-spacing:2px; line-height:1.1;">MILL TEST CERTIFICATE</div>
-              <div style="font-size:10.5px; font-weight:700; color:#333; margin-top:2px;">บริษัท ที.สแตนดาร์ดสตีล จำกัด &nbsp;|&nbsp; T. Standard Steel Co., Ltd.</div>
-              <div style="font-size:9px; color:#666; margin-top:1px;">24/17 หมู่ 3 ซ.ไกรศักดาวัฒน์ ถ.เทพารักษ์ ต.บางปลา อ.บางพลี จ.สมุทรปราการ 10540</div>
-            </div>
-            <div style="text-align:center; min-width:64px;">
-              <img src="${TISI}" alt="มอก." style="height:46px; width:auto;"
-                   onerror="this.style.display='none'">
-              <div style="font-size:8px; font-weight:800; color:#002a6e; margin-top:1px;">มอก. ${FIXED_107.tisi}</div>
-            </div>
-          </div>
-
-          <!-- ═══ CERT INFO ═══ -->
-          <div style="display:flex; gap:7px; margin-bottom:8px;">
-            <div style="flex:1.4; border:2px solid #002a6e; border-radius:4px; padding:5px 10px;">
-              <div style="font-size:8px; color:#002a6e; font-weight:800; letter-spacing:1px; text-transform:uppercase;">Certificate No. / เลขที่ใบรับรอง</div>
-              <div style="font-size:14px; font-weight:900; color:#002a6e; letter-spacing:1.5px; margin-top:1px;">${certNo}</div>
-            </div>
-            <div style="flex:1; border:1.5px solid #ccc; border-radius:4px; padding:5px 10px;">
-              <div style="font-size:8px; color:#666; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">Date / วันที่ออกใบรับรอง</div>
-              <div style="font-size:12px; font-weight:700; margin-top:2px;">${today}</div>
-            </div>
-            <div style="flex:1; border:1.5px solid #ccc; border-radius:4px; padding:5px 10px;">
-              <div style="font-size:8px; color:#666; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">License No. / ใบอนุญาต มอก.</div>
-              <div style="font-size:12px; font-weight:700; margin-top:2px;">${FIXED_107.license}</div>
-            </div>
-          </div>
-
-          <!-- ═══ CUSTOMER & LOT ═══ -->
-          <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:12px;">
+          <!-- ══ HEADER ══ -->
+          <table style="width:100%; border-collapse:collapse; border:1.5px solid #000; margin-bottom:0;">
             <tr>
-              <td style="width:16%; padding:6px 8px; background:#002a6e; color:#fff; font-weight:700; font-size:9.5px; border:1px solid #002a6e;">Customer<br><span style="font-weight:400; font-size:9px;">ชื่อลูกค้า</span></td>
-              <td style="padding:6px 10px; border:1px solid #ccc; font-weight:700; font-size:13px;">${customer}</td>
-              <td style="width:17%; padding:6px 8px; background:#002a6e; color:#fff; font-weight:700; font-size:9.5px; border:1px solid #002a6e; text-align:center;">Lot / Heat No.<br><span style="font-weight:400; font-size:9px;">หมายเลข Coil</span></td>
-              <td style="width:19%; padding:6px 10px; border:1px solid #ccc; font-weight:800; font-size:13px; color:#002a6e; text-align:center;">${lotNo}</td>
+              <td style="width:190px; padding:5px 8px; border-right:1.5px solid #000; vertical-align:middle;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <img src="${LOGO}" style="height:34px; width:auto;" onerror="this.style.display='none'">
+                  <span style="font-weight:bold; font-size:10.5px; line-height:1.2;">T.Standardsteel<br>Co.,Ltd.</span>
+                </div>
+              </td>
+              <td style="text-align:center; font-size:19px; font-weight:bold; letter-spacing:3px; padding:8px;">
+                INSPECTION &nbsp; CERTIFICATE
+              </td>
             </tr>
           </table>
 
-          <!-- ═══ PRODUCT ═══ -->
-          <div style="background:#002a6e; color:#fff; padding:4px 10px; font-weight:800; font-size:10px;
-                      letter-spacing:1px; border-radius:4px 4px 0 0; text-transform:uppercase;">
-            &#9654; Product Description &nbsp;/&nbsp; รายละเอียดสินค้า
-          </div>
-          <table style="width:100%; border-collapse:collapse; margin-bottom:8px; font-size:11.5px; border:1px solid #ccc; border-top:none;">
+          <!-- ══ INFO ROWS ══ -->
+          <table style="width:100%; border-collapse:collapse; border:1px solid #000; border-top:none; font-size:9.5px;">
+            <tr>
+              <td style="${td} width:30%;">Customer : <span style="background:#00FFFF; padding:1px 10px; font-weight:bold;">${customer || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'}</span></td>
+              <td style="${td}">Office/Factory : 24/17 Soi Kriakdiswar, Bangpla, Bangpli, Samutprakarn 10540</td>
+              <td style="${td} white-space:nowrap; width:70px;">Standard :</td>
+              <td style="${td} width:85px; font-weight:bold;">TIS107-2566</td>
+            </tr>
+            <tr>
+              <td style="${td}">Description : <b>${size}</b></td>
+              <td style="${td}">Tel. 02-750-5858-62 &nbsp;&nbsp;&nbsp; Fax. 02-750-5863</td>
+              <td style="${td} white-space:nowrap;">Specification :</td>
+              <td style="${td} font-weight:bold;">STKR400</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="${td}">Commodity : <b>CARBON STEEL TUBES FOR GENERAL STRUCTURE</b></td>
+              <td style="${td} white-space:nowrap;">Certificate No. :</td>
+              <td style="${td} background:#00FFFF; font-weight:bold;">${certNo}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="${td}">S/O No. : <b>${soNo}</b></td>
+              <td colspan="2" style="${td}"></td>
+            </tr>
+          </table>
+
+          <!-- ══ MAIN TABLE ══ -->
+          <table style="width:100%; border-collapse:collapse; border:1px solid #000; border-top:none; font-size:9px; text-align:center;">
             <thead>
-              <tr style="background:#e8eef7;">
-                <th style="padding:5px 8px; border:1px solid #ccc; color:#002a6e; font-size:10px;">Description / รายการสินค้า</th>
-                <th style="padding:5px 8px; border:1px solid #ccc; color:#002a6e; font-size:10px; width:16%;">Size / ขนาด</th>
-                <th style="padding:5px 8px; border:1px solid #ccc; color:#002a6e; font-size:10px; width:12%;">Grade</th>
-                <th style="padding:5px 8px; border:1px solid #ccc; color:#002a6e; font-size:10px; width:18%;">Standard / มาตรฐาน</th>
+              <tr>
+                <th rowspan="3" style="${thC} width:32px;">Item<br>No.</th>
+                <th rowspan="3" style="${thC} width:58px;">Delivery<br>Date</th>
+                <th rowspan="3" style="${thC} width:58px;">Delivery<br>Qty.</th>
+                <th rowspan="3" style="${thC} width:62px;">Lot No.</th>
+                <th rowspan="3" style="${thC} width:40px;">Material</th>
+                <th colspan="5" style="${thC}">Dimension (mm.)</th>
+                <th colspan="5" style="${thC}">Chemical Composition</th>
+              </tr>
+              <tr>
+                <th colspan="5" style="${thC}">Tolerances on Dimension (mm.)</th>
+                <th rowspan="2" style="${thC}">%C</th>
+                <th rowspan="2" style="${thC}">%Si</th>
+                <th rowspan="2" style="${thC}">%Mn</th>
+                <th rowspan="2" style="${thC}">%P<br><span style="font-weight:400;">max 0.05</span></th>
+                <th rowspan="2" style="${thC}">%S<br><span style="font-weight:400;">max 0.05</span></th>
+              </tr>
+              <tr>
+                <th style="${thC} width:52px;">A or C<br>/ ±1.50</th>
+                <th style="${thC} width:52px;">D or B<br>/ ±1.50</th>
+                <th style="${thC} width:52px;">Thickness<br>±10%</th>
+                <th style="${thC} width:52px;">ID Weld Bead<br>Max 0.30</th>
+                <th style="${thC} width:52px;">Length<br>+40/-0</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody style="font-size:9.5px;">
+              <!-- row 1: A= -->
               <tr>
-                <td style="padding:7px 8px; border:1px solid #ccc; font-weight:700; text-align:center;">${productName}</td>
-                <td style="padding:7px 8px; border:1px solid #ccc; font-weight:700; text-align:center;">${size}</td>
-                <td style="padding:7px 8px; border:1px solid #ccc; font-weight:700; text-align:center;">STKR400</td>
-                <td style="padding:7px 8px; border:1px solid #ccc; font-weight:700; text-align:center;">TIS ${FIXED_107.tisi}</td>
+                <td rowspan="4" style="${tdC} font-weight:bold;">1</td>
+                <td rowspan="4" style="${tdC}">${delivDateFmt}</td>
+                <td rowspan="4" style="${tdC}">${delivQty}</td>
+                <td rowspan="4" style="${tdC} background:#00FFFF; font-weight:bold;">${lotNo}</td>
+                <td rowspan="4" style="${tdC}"></td>
+                <td style="${tdC} font-weight:bold;">A=${dimA}</td>
+                <td style="${tdC}"></td>
+                <td rowspan="4" style="${tdC} font-weight:bold;">${thick}</td>
+                <td rowspan="4" style="${tdC}"></td>
+                <td rowspan="4" style="${tdC} font-weight:bold;">${tubeLen}</td>
+                <td rowspan="4" style="${tdC}">${v('c_c')}</td>
+                <td rowspan="4" style="${tdC}">${v('c_si')}</td>
+                <td rowspan="4" style="${tdC}">${v('c_mn')}</td>
+                <td rowspan="4" style="${tdC}">${v('c_p')}</td>
+                <td rowspan="4" style="${tdC}">${v('c_s')}</td>
               </tr>
+              <!-- row 2: C= -->
+              <tr>
+                <td style="${tdC} font-weight:bold;">C=${dimA}</td>
+                <td style="${tdC}"></td>
+              </tr>
+              <!-- row 3: D= -->
+              <tr>
+                <td style="${tdC}"></td>
+                <td style="${tdC} font-weight:bold;">D=${dimB}</td>
+              </tr>
+              <!-- row 4: B= -->
+              <tr>
+                <td style="${tdC}"></td>
+                <td style="${tdC} font-weight:bold;">B=${dimB}</td>
+              </tr>
+              <!-- blank rows -->
+              <tr><td style="${tdC}" colspan="15">&nbsp;</td></tr>
+              <tr><td style="${tdC}" colspan="15">&nbsp;</td></tr>
             </tbody>
           </table>
 
-          <!-- ═══ CHEMICAL ANALYSIS ═══ -->
-          <div style="background:#1a5c1a; color:#fff; padding:4px 10px; font-weight:800; font-size:10px;
-                      letter-spacing:1px; border-radius:4px 4px 0 0; text-transform:uppercase;">
-            &#9654; Chemical Analysis &nbsp;/&nbsp; การวิเคราะห์ทางเคมี (%)
-          </div>
-          <table style="width:100%; border-collapse:collapse; margin-bottom:8px; text-align:center; font-size:11.5px; border:1px solid #ccc; border-top:none;">
-            <thead>
-              <tr style="background:#eaf5ea;">
-                <th style="padding:5px; border:1px solid #ccc; color:#1a5c1a; font-size:10.5px;">C</th>
-                <th style="padding:5px; border:1px solid #ccc; color:#1a5c1a; font-size:10.5px;">Si</th>
-                <th style="padding:5px; border:1px solid #ccc; color:#1a5c1a; font-size:10.5px;">Mn</th>
-                <th style="padding:5px; border:1px solid #ccc; color:#1a5c1a; font-size:10.5px;">P</th>
-                <th style="padding:5px; border:1px solid #ccc; color:#1a5c1a; font-size:10.5px;">S</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding:8px 5px; border:1px solid #ccc; font-weight:800; font-size:14px;">${v('c_c')}</td>
-                <td style="padding:8px 5px; border:1px solid #ccc; font-weight:800; font-size:14px;">${v('c_si')}</td>
-                <td style="padding:8px 5px; border:1px solid #ccc; font-weight:800; font-size:14px;">${v('c_mn')}</td>
-                <td style="padding:8px 5px; border:1px solid #ccc; font-weight:800; font-size:14px;">${v('c_p')}</td>
-                <td style="padding:8px 5px; border:1px solid #ccc; font-weight:800; font-size:14px;">${v('c_s')}</td>
-              </tr>
-            </tbody>
+          <!-- ══ BOTTOM SECTION ══ -->
+          <table style="width:100%; border-collapse:collapse; border:1px solid #000; border-top:none; font-size:9px;">
+            <tr>
+              <!-- Left: Remark + Signatures -->
+              <td style="width:48%; vertical-align:top; padding:0; border-right:1px solid #000;">
+                <table style="width:100%; border-collapse:collapse; height:100%;">
+                  <tr>
+                    <td colspan="2" style="${td} vertical-align:top; min-height:40px;">
+                      <b>Remark :</b>
+                      <div style="min-height:36px;"></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="${thC} width:50%;">REPORT</td>
+                    <td style="${thC}">APPROVE</td>
+                  </tr>
+                  <tr>
+                    <td style="${tdC} height:36px;"></td>
+                    <td style="${tdC}"></td>
+                  </tr>
+                  <tr>
+                    <td style="${tdC} font-size:8.5px;">Quality Assurance Officer</td>
+                    <td style="${tdC} font-size:8.5px;">Quality Assurance Manager</td>
+                  </tr>
+                </table>
+              </td>
+              <!-- Right: Mechanical Property -->
+              <td style="vertical-align:top; padding:0;">
+                <table style="width:100%; border-collapse:collapse;">
+                  <tr>
+                    <td colspan="7" style="${thC}">Mechanical Property</td>
+                  </tr>
+                  <tr>
+                    <th style="${thC}">Lot No.</th>
+                    <th style="${thC}">VS<br>(N/mm)</th>
+                    <th style="${thC}">TS<br>(N/mm)</th>
+                    <th style="${thC}">Elongation<br>%</th>
+                    <th style="${thC}">Flattening<br>Test</th>
+                    <th style="${thC}">Bending<br>Test</th>
+                    <th style="${thC}">Penetrant<br>Test</th>
+                  </tr>
+                  <tr>
+                    <td style="${tdC} background:#00FFFF; font-weight:bold;">${lotNo}</td>
+                    <td style="${tdC} font-weight:bold; font-size:11px;">${v('c_yield')}</td>
+                    <td style="${tdC} font-weight:bold; font-size:11px;">${v('c_tensile')}</td>
+                    <td style="${tdC} font-weight:bold; font-size:11px;">${v('c_elon')}</td>
+                    <td style="${tdC}">-</td>
+                    <td style="${tdC}">-</td>
+                    <td style="${tdC}">-</td>
+                  </tr>
+                  <tr><td colspan="7" style="${tdC} height:28px;"></td></tr>
+                  <tr><td colspan="7" style="${tdC} height:28px;"></td></tr>
+                </table>
+              </td>
+            </tr>
           </table>
 
-          <!-- ═══ MECHANICAL PROPERTIES ═══ -->
-          <div style="background:#7b1c1c; color:#fff; padding:4px 10px; font-weight:800; font-size:10px;
-                      letter-spacing:1px; border-radius:4px 4px 0 0; text-transform:uppercase;">
-            &#9654; Mechanical Properties &nbsp;/&nbsp; คุณสมบัติทางกล
-          </div>
-          <table style="width:100%; border-collapse:collapse; margin-bottom:10px; text-align:center; font-size:11.5px; border:1px solid #ccc; border-top:none;">
-            <thead>
-              <tr style="background:#fdf0f0;">
-                <th style="padding:5px; border:1px solid #ccc; color:#7b1c1c; font-size:10px;">Yield Strength<br><span style="font-weight:400;">ขีดจำกัดการยืดตัว (N/mm²)</span></th>
-                <th style="padding:5px; border:1px solid #ccc; color:#7b1c1c; font-size:10px;">Tensile Strength<br><span style="font-weight:400;">ความต้านทานแรงดึง (N/mm²)</span></th>
-                <th style="padding:5px; border:1px solid #ccc; color:#7b1c1c; font-size:10px;">Elongation<br><span style="font-weight:400;">การยืดตัว (%)</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style="padding:10px 5px; border:1px solid #ccc; font-weight:900; font-size:18px; color:#002a6e;">${v('c_yield')}</td>
-                <td style="padding:10px 5px; border:1px solid #ccc; font-weight:900; font-size:18px; color:#002a6e;">${v('c_tensile')}</td>
-                <td style="padding:10px 5px; border:1px solid #ccc; font-weight:900; font-size:18px; color:#002a6e;">${v('c_elon')}</td>
-              </tr>
-            </tbody>
-          </table>
-
-          <!-- ═══ FOOTER ═══ -->
-          <div style="display:flex; gap:10px; margin-top:4px;">
-            <div style="flex:2; border:1px solid #ccc; border-radius:4px; padding:7px 12px;">
-              <div style="font-size:8.5px; font-weight:800; color:#555; letter-spacing:1px; text-transform:uppercase; margin-bottom:4px;">Remarks / หมายเหตุ</div>
-              <div style="font-size:10px; color:#333; line-height:1.55;">
-                ผลการทดสอบข้างต้นเป็นผลของวัตถุดิบเหล็กแผ่นม้วน (Steel Coil) ที่ใช้ผลิตสินค้านี้<br>
-                ทดสอบตามมาตรฐาน TIS ${FIXED_107.tisi} / The above test results are of raw material used in production.
-              </div>
-            </div>
-            <div style="flex:1; border:1px solid #ccc; border-radius:4px; padding:8px 12px; text-align:center; display:flex; flex-direction:column; justify-content:space-between; min-height:76px;">
-              <div style="font-size:8.5px; font-weight:800; color:#555; letter-spacing:1px; text-transform:uppercase;">Authorized by / รับรองโดย</div>
-              <div style="border-bottom:1.5px solid #333; margin:14px 12px 4px;"></div>
-              <div>
-                <div style="font-size:9.5px; font-weight:700; color:#222;">QC Manager</div>
-                <div style="font-size:9px; color:#555;">T. Standard Steel Co., Ltd.</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- watermark strip -->
-          <div style="margin-top:10px; padding-top:6px; border-top:2px solid #002a6e;
-                      display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-size:8.5px; color:#888;">
-              This certificate is issued under License No. ${FIXED_107.license} &nbsp;|&nbsp; TIS ${FIXED_107.tisi}
-            </div>
-            <div style="font-size:8.5px; color:#888; font-weight:700;">T. Standard Steel Co., Ltd.</div>
+          <!-- ══ FOOTER ══ -->
+          <div style="border:1px solid #000; border-top:none; padding:4px 8px; font-size:9px; font-style:italic; text-align:center;">
+            We hereby certify that product list above comply with order requirement
           </div>
 
         </div>`;
     }
 
     function printCertificate() {
+      const gv = id => { const el = document.getElementById(id); return el ? el.value : ''; };
       const data = {
-        customer_name: document.getElementById('c_customer').value,
-        product_code:  document.getElementById('c_product_code').value,
-        product_name:  document.getElementById('c_product_name').value,
-        size:          document.getElementById('c_size').value,
-        lot_no:        document.getElementById('c_lot').value,
-        chem_c:  document.getElementById('c_c').value,
-        chem_si: document.getElementById('c_si').value,
-        chem_mn: document.getElementById('c_mn').value,
-        chem_p:  document.getElementById('c_p').value,
-        chem_s:  document.getElementById('c_s').value,
-        mech_yield:   document.getElementById('c_yield').value,
-        mech_tensile: document.getElementById('c_tensile').value,
-        mech_elon:    document.getElementById('c_elon').value
+        customer_name:  gv('c_customer'),
+        product_code:   gv('c_product_code'),
+        product_name:   gv('c_product_name'),
+        size:           gv('c_size'),
+        lot_no:         gv('c_lot'),
+        so_no:          gv('c_so_no'),
+        delivery_date:  gv('c_delivery_date'),
+        delivery_qty:   gv('c_delivery_qty'),
+        chem_c:         gv('c_c'),
+        chem_si:        gv('c_si'),
+        chem_mn:        gv('c_mn'),
+        chem_p:         gv('c_p'),
+        chem_s:         gv('c_s'),
+        mech_yield:     gv('c_yield'),
+        mech_tensile:   gv('c_tensile'),
+        mech_elon:      gv('c_elon')
       };
       setStatus('กำลังบันทึก...', 'blue');
       apiPost('recordCertData', data)
