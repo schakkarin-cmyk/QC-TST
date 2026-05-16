@@ -195,8 +195,8 @@ function getPlanByDateForQC(dateStr) {
       const qcVals = qcSheet.getDataRange().getValues();
       for (let i = 1; i < qcVals.length; i++) {
         const row   = qcVals[i];
-        const code  = row[0] ? row[0].toString().trim().toUpperCase() : null;
-        const name  = row[2] ? row[2].toString().trim() : '';   // col C
+        const code  = row[1] ? row[1].toString().trim().toUpperCase() : null; // col B
+        const name  = row[2] ? row[2].toString().trim() : '';                 // col C
         const thick = (row[10] != null && row[10] !== '') ? row[10].toString().trim() : null; // col K
         if (code) stdMap[code] = { thick: thick || 'ไม่ระบุ', name: name || code };
       }
@@ -250,17 +250,7 @@ function getPlanByDateForQC(dateStr) {
       })
       .map(thick => ({ thickness: thick, products: groups[thick].sort() }));
 
-    return {
-      success: true,
-      data: result,
-      message: 'พบ ' + productCodes.size + ' รายการ',
-      debug: {
-        qcSheetFound:    !!qcSheet,
-        stdMapSize:      Object.keys(stdMap).length,
-        stdMapSample:    Object.keys(stdMap).slice(0, 3),
-        planCodesSample: Array.from(productCodes).slice(0, 3)
-      }
-    };
+    return { success: true, data: result, message: 'พบ ' + productCodes.size + ' รายการ' };
 
   } catch (err) {
     return { success: false, message: err.toString() };

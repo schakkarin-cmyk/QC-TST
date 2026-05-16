@@ -1102,7 +1102,6 @@
             return;
           }
           mechCurrentData = res.data || [];
-          if (res.debug) console.log('DEBUG mech:', JSON.stringify(res.debug));
           if (mechCurrentData.length === 0) {
             statusEl.textContent = '⚠️ ไม่พบแผนการผลิตในวันที่นี้';
             document.getElementById('mech-table-area').innerHTML =
