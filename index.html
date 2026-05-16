@@ -618,6 +618,20 @@
                 <input type="text" id="c_product_name" readonly>
               </div>
 
+              <div class="sec-label">ข้อมูล Coil วัตถุดิบ</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                  <label>Lot / Heat No. (Coil)</label>
+                  <select id="c_lot" onchange="fillCoilData()" style="width:100%; padding:10px 13px; border:1.5px solid #DDE3EE; border-radius:8px; font-size:14px; font-family:'Sarabun',sans-serif; color:#1a2b4a; background:white; outline:none;">
+                    <option value="">— เลือก Lot —</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>ความหนา Coil (มม.)</label>
+                  <input type="text" id="c_coil_thickness" readonly style="background:#F5F7FA; color:#6B7E99;">
+                </div>
+              </div>
+
               <div class="sec-label">Chemical Analysis (%)</div>
               <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:12px;">
                 <div class="form-group"><label>C</label><input type="number" step="0.001" id="c_c" value="0.150" oninput="updateCertPreview()"></div>
@@ -759,7 +773,7 @@
     };
 
     window.onload = () => {
-      loadMasterData(); updatePreview(); updateCertPreview();
+      loadMasterData(); loadCoilLots(); updatePreview(); updateCertPreview();
       const md = document.getElementById('mech_date');
       if (md) { const t = new Date(); md.value = t.toISOString().slice(0,10); }
     };
@@ -964,6 +978,39 @@
       }, 800);
     }
 
+    // ── Coil Lots ─────────────────────────────────────────────────────────────
+    let coilLotsData = [];
+
+    function loadCoilLots() {
+      apiGet('getCoilLots').then(res => {
+        if (!res.success) return;
+        coilLotsData = res.lots || [];
+        const sel = document.getElementById('c_lot');
+        if (!sel) return;
+        sel.innerHTML = '<option value="">— เลือก Lot —</option>';
+        coilLotsData.forEach(l => {
+          const opt = document.createElement('option');
+          opt.value = l.lot;
+          opt.textContent = l.lot + (l.thickness ? '  (' + l.thickness + ' มม.)' : '') + (l.prod_date ? '  ' + l.prod_date : '');
+          sel.appendChild(opt);
+        });
+      }).catch(() => {});
+    }
+
+    function fillCoilData() {
+      const lot = document.getElementById('c_lot').value;
+      const data = coilLotsData.find(l => l.lot === lot);
+      if (data) {
+        document.getElementById('c_coil_thickness').value = data.thickness || '';
+        document.getElementById('c_yield').value   = data.yield      || '';
+        document.getElementById('c_tensile').value = data.tensile    || '';
+        document.getElementById('c_elon').value    = data.elongation || '';
+      } else {
+        document.getElementById('c_coil_thickness').value = '';
+      }
+      updateCertPreview();
+    }
+
     // ── Certificate ───────────────────────────────────────────────────────────
     function showSuggestionsCert() {
       const input = document.getElementById('c_product_code');
@@ -995,6 +1042,7 @@
       const customer    = document.getElementById('c_customer').value || '(ระบุชื่อลูกค้า)';
       const productName = document.getElementById('c_product_name').value || '---';
       const size        = document.getElementById('c_size').value || '---';
+      const lotNo       = document.getElementById('c_lot').value || '---';
       document.getElementById('certPreview').innerHTML = `
         <div style="text-align:center; border-bottom:2px solid black; padding-bottom:10px; margin-bottom:20px;">
           <h2 style="margin:0;">MILL TEST CERTIFICATE</h2>
@@ -1003,6 +1051,7 @@
         <table style="width:100%; margin-bottom:20px;">
           <tr><td><b>Date:</b> ${new Date().toLocaleDateString('th-TH')}</td><td style="text-align:right;"><b>Standard:</b> TIS ${FIXED_107.tisi}</td></tr>
           <tr><td><b>Customer:</b> ${customer}</td><td style="text-align:right;"><b>No:</b> QC-TST-${Date.now().toString().slice(-6)}</td></tr>
+          <tr><td><b>Lot / Heat No.:</b> ${lotNo}</td><td></td></tr>
         </table>
         <table border="1" style="width:100%; border-collapse:collapse; margin-bottom:20px; text-align:center;">
           <tr style="background:#eee;"><th>Description</th><th>Size</th><th>Grade</th></tr>
@@ -1036,6 +1085,7 @@
         product_code:  document.getElementById('c_product_code').value,
         product_name:  document.getElementById('c_product_name').value,
         size:          document.getElementById('c_size').value,
+        lot_no:        document.getElementById('c_lot').value,
         chem_c:  document.getElementById('c_c').value,
         chem_si: document.getElementById('c_si').value,
         chem_mn: document.getElementById('c_mn').value,

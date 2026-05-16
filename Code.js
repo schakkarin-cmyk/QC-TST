@@ -27,6 +27,10 @@ function doGet(e) {
     return jsonResponse(getPlanByDateForQC(date));
   }
 
+  if (action === 'getCoilLots') {
+    return jsonResponse(getCoilLots());
+  }
+
   // health check
   return jsonResponse({ status: 'QC-TST API ready', version: '2.0' });
 }
@@ -116,7 +120,7 @@ function recordCertData(formData) {
     if (sheet.getLastRow() === 0) {
       sheet.appendRow([
         'วันที่บันทึก', 'ชื่อลูกค้า', 'รหัสสินค้า', 'ชื่อสินค้า', 'ขนาด',
-        'C', 'Si', 'Mn', 'P', 'S', 'Yield', 'Tensile', 'Elongation'
+        'Lot / Heat No.', 'C', 'Si', 'Mn', 'P', 'S', 'Yield', 'Tensile', 'Elongation'
       ]);
     }
 
@@ -126,6 +130,7 @@ function recordCertData(formData) {
       formData.product_code   || '',
       formData.product_name   || '',
       formData.size           || '',
+      formData.lot_no         || '',
       formData.chem_c         || '',
       formData.chem_si        || '',
       formData.chem_mn        || '',
@@ -168,6 +173,41 @@ function getMasterProductData() {
     return productMaster;
   } catch (e) {
     return { error: e.message };
+  }
+}
+
+// ============================================================
+// getCoilLots — ดึงรายการ Lot Coil จากชีตบันทึกคุณสมบัติทางกล
+// ============================================================
+function getCoilLots() {
+  try {
+    const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(MECH_LOG_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return { success: true, lots: [] };
+
+    const values = sheet.getDataRange().getValues();
+    const lotMap = {}; // lot -> data (เก็บแถวล่าสุด)
+
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      const lot = row[3] ? row[3].toString().trim() : null; // col D = ล็อต
+      if (!lot) continue;
+      lotMap[lot] = {
+        lot:        lot,
+        thickness:  row[2] != null ? row[2].toString() : '', // col C
+        yield:      row[4] != null ? row[4].toString() : '', // col E
+        tensile:    row[5] != null ? row[5].toString() : '', // col F
+        elongation: row[6] != null ? row[6].toString() : '', // col G
+        prod_date:  row[1] ? row[1].toString() : ''          // col B
+      };
+    }
+
+    const lots = Object.values(lotMap)
+      .sort((a, b) => a.lot.localeCompare(b.lot));
+
+    return { success: true, lots: lots };
+  } catch (err) {
+    return { success: false, message: err.toString() };
   }
 }
 
