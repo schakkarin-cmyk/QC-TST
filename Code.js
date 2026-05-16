@@ -250,7 +250,17 @@ function getPlanByDateForQC(dateStr) {
       })
       .map(thick => ({ thickness: thick, products: groups[thick].sort() }));
 
-    return { success: true, data: result, message: 'พบ ' + productCodes.size + ' รายการ' };
+    return {
+      success: true,
+      data: result,
+      message: 'พบ ' + productCodes.size + ' รายการ',
+      debug: {
+        qcSheetFound:    !!qcSheet,
+        stdMapSize:      Object.keys(stdMap).length,
+        stdMapSample:    Object.keys(stdMap).slice(0, 3),
+        planCodesSample: Array.from(productCodes).slice(0, 3)
+      }
+    };
 
   } catch (err) {
     return { success: false, message: err.toString() };
