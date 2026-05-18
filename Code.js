@@ -443,18 +443,20 @@ function getQCHoldProductionPlan(monthOffset) {
     }
 
     // ── Step 4: อ่าน date columns จาก row 0 (เริ่มจาก col G = index 6) ────────
+    // รับเฉพาะ cell ที่เป็น Date object หรือ string รูปแบบวันที่ d/M/yyyy หรือ d-M-yyyy เท่านั้น
     const headerRow = planData[0];
     const dateCols  = [];
+    const DATE_PATTERN = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/;
     for (let col = 6; col < headerRow.length; col++) {
       const cell = headerRow[col];
       if (cell === null || cell === '') continue;
-      let label = '';
       if (cell instanceof Date) {
-        label = Utilities.formatDate(cell, 'Asia/Bangkok', 'd/M/yyyy');
-      } else {
-        label = String(cell).trim();
+        const label = Utilities.formatDate(cell, 'Asia/Bangkok', 'd/M/yyyy');
+        dateCols.push({ colIdx: col, dateLabel: label });
+      } else if (DATE_PATTERN.test(String(cell).trim())) {
+        dateCols.push({ colIdx: col, dateLabel: String(cell).trim() });
       }
-      if (label) dateCols.push({ colIdx: col, dateLabel: label });
+      // ข้าม cell ที่เป็นข้อความ เช่น "ตัน", "รวม", "%" ฯลฯ
     }
 
     // ── Step 5: จับคู่ QC Hold กับแผนผลิต ───────────────────────────────────
