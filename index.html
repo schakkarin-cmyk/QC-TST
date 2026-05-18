@@ -1854,22 +1854,41 @@
         + '<th style="padding:10px 12px; text-align:left; font-weight:700; color:#004B8D;">แผนผลิตในเดือนนี้</th>'
         + '</tr></thead><tbody>';
 
+      // วันนี้ เที่ยงคืน สำหรับเปรียบเทียบ
+      const todayMidnight = new Date(); todayMidnight.setHours(0,0,0,0);
+      function parsePlanDate(s) {
+        const p = s.split('/');
+        return p.length === 3 ? new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])) : null;
+      }
+
       res.data.forEach((item, i) => {
-        const hasplan  = item.plannedDates && item.plannedDates.length > 0;
+        // กรองเฉพาะวันนี้และอนาคต
+        const futureDates = (item.plannedDates || []).filter(d => {
+          const dt = parsePlanDate(d.date);
+          return dt && dt >= todayMidnight;
+        });
+
+        const hasplan  = futureDates.length > 0;
         const rowBg    = hasplan ? (i % 2 === 0 ? '#FFF5F5' : '#FEF0EE') : (i % 2 === 0 ? '#fff' : '#FAFBFD');
         const borderL  = hasplan ? 'border-left:4px solid #E74C3C;' : 'border-left:4px solid transparent;';
         const codeColor = hasplan ? '#C0392B' : '#1a2b4a';
 
-        let datesHtml = '<span style="color:#6B7E99; font-size:12px;">— ไม่มีแผนผลิตในเดือนนี้ —</span>';
+        let datesHtml = '<span style="color:#6B7E99; font-size:12px;">— ไม่มีแผนผลิตที่จะมาถึง —</span>';
         if (hasplan) {
-          const sorted = [...item.plannedDates].sort((a, b) => {
+          const sorted = [...futureDates].sort((a, b) => {
             const toNum = s => { const p = s.split('/'); return parseInt(p[2])*10000 + parseInt(p[1])*100 + parseInt(p[0]); };
             return toNum(a.date) - toNum(b.date);
           });
-          datesHtml = sorted.map(d =>
-            '<span style="display:inline-block; margin:2px 3px; padding:3px 9px; border-radius:5px; background:#FDEDEC; border:1px solid #E74C3C; color:#C0392B; font-weight:700; white-space:nowrap;">'
-            + d.date + ' <span style="font-weight:400; color:#888;">[' + d.qty.toLocaleString() + ']</span></span>'
-          ).join('');
+          datesHtml = sorted.map(d => {
+            const dt = parsePlanDate(d.date);
+            const isToday = dt && dt.toDateString() === todayMidnight.toDateString();
+            const bg     = isToday ? '#FFF3CD' : '#FDEDEC';
+            const border = isToday ? '#E67E22' : '#E74C3C';
+            const color  = isToday ? '#B7770D' : '#C0392B';
+            const label  = isToday ? '📌 วันนี้ ' + d.date : d.date;
+            return '<span style="display:inline-block; margin:2px 3px; padding:3px 9px; border-radius:5px; background:' + bg + '; border:1px solid ' + border + '; color:' + color + '; font-weight:700; white-space:nowrap;">'
+              + label + ' <span style="font-weight:400; color:#888;">[' + d.qty.toLocaleString() + ']</span></span>';
+          }).join('');
         }
 
         html += '<tr style="background:' + rowBg + '; ' + borderL + '">'
