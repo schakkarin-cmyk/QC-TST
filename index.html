@@ -1860,14 +1860,30 @@
         const p = s.split('/');
         return p.length === 3 ? new Date(parseInt(p[2]), parseInt(p[1])-1, parseInt(p[0])) : null;
       }
+      function dateToNum(s) {
+        const p = s.split('/');
+        return parseInt(p[2])*10000 + parseInt(p[1])*100 + parseInt(p[0]);
+      }
 
-      res.data.forEach((item, i) => {
-        // กรองเฉพาะวันนี้และอนาคต
+      // pre-process: คำนวณ futureDates + nearestDate แต่ละ item แล้ว sort
+      const processed = res.data.map(item => {
         const futureDates = (item.plannedDates || []).filter(d => {
           const dt = parsePlanDate(d.date);
           return dt && dt >= todayMidnight;
-        });
+        }).sort((a, b) => dateToNum(a.date) - dateToNum(b.date));
+        const nearest = futureDates.length > 0 ? parsePlanDate(futureDates[0].date) : null;
+        return { item, futureDates, nearest };
+      });
 
+      // sort: มีแผน → เรียงวันใกล้สุดก่อน | ไม่มีแผน → ท้ายสุด
+      processed.sort((a, b) => {
+        if (a.nearest && b.nearest) return a.nearest - b.nearest;
+        if (a.nearest) return -1;
+        if (b.nearest) return 1;
+        return 0;
+      });
+
+      processed.forEach(({ item, futureDates }, i) => {
         const hasplan  = futureDates.length > 0;
         const rowBg    = hasplan ? (i % 2 === 0 ? '#FFF5F5' : '#FEF0EE') : (i % 2 === 0 ? '#fff' : '#FAFBFD');
         const borderL  = hasplan ? 'border-left:4px solid #E74C3C;' : 'border-left:4px solid transparent;';
