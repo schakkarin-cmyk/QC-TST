@@ -1570,14 +1570,24 @@
 
     // ── QC Hold History Chart ─────────────────────────────────────────────────
     let qcHoldChartInstance = null;
+    let qcHoldTodayLive     = null; // { items, qty } จากชีต live — ไม่บันทึกลง DB
 
     function loadQCHoldHistory() {
       fetch(GAS_URL + '?action=getQCHoldHistory')
         .then(r => r.json())
         .then(res => {
           if (!res.success) return;
-          renderQCHoldChart(res.data || []);
-          renderQCHoldHistoryTable(res.data || []);
+          const history = res.data || [];
+
+          // รวมยอดวันนี้จากชีต live เข้ากราฟโดยตรง (ไม่บันทึกซ้ำ)
+          const today = new Date().toLocaleDateString('th-TH', { day:'2-digit', month:'2-digit', year:'numeric' });
+          let chartData = history.filter(d => d.date !== today); // ตัด record เดิมของวันนี้ออก (ถ้ามีจาก trigger)
+          if (qcHoldTodayLive) {
+            chartData = chartData.concat([{ date: 'วันนี้', items: qcHoldTodayLive.items, qty: qcHoldTodayLive.qty, note: 'live' }]);
+          }
+
+          renderQCHoldChart(chartData);
+          renderQCHoldHistoryTable(history); // ตารางแสดงเฉพาะที่บันทึกจริง
         })
         .catch(() => {});
     }
@@ -1623,6 +1633,12 @@
       const labels   = data.map(d => d.date);
       const qtyData  = data.map(d => d.qty);
       const itemData = data.map(d => d.items);
+      const isToday  = data.map(d => d.note === 'live');
+
+      // จุด "วันนี้" ใช้สีส้ม + radius ใหญ่กว่า
+      const qtyPointColor  = isToday.map(t => t ? '#E67E22' : '#E74C3C');
+      const qtyPointRadius = isToday.map(t => t ? 7 : 4);
+      const itemPointColor = isToday.map(t => t ? '#E67E22' : '#2E86C1');
 
       if (qcHoldChartInstance) qcHoldChartInstance.destroy();
 
@@ -1637,8 +1653,8 @@
               borderColor: '#E74C3C',
               backgroundColor: 'rgba(231,76,60,0.08)',
               borderWidth: 2.5,
-              pointRadius: 4,
-              pointBackgroundColor: '#E74C3C',
+              pointRadius: qtyPointRadius,
+              pointBackgroundColor: qtyPointColor,
               tension: 0.3,
               fill: true,
               yAxisID: 'yQty'
@@ -1649,8 +1665,8 @@
               borderColor: '#2E86C1',
               backgroundColor: 'rgba(46,134,193,0.0)',
               borderWidth: 2,
-              pointRadius: 3,
-              pointBackgroundColor: '#2E86C1',
+              pointRadius: isToday.map(t => t ? 6 : 3),
+              pointBackgroundColor: itemPointColor,
               tension: 0.3,
               borderDash: [5, 4],
               fill: false,
@@ -1813,6 +1829,10 @@
     function renderQCHoldPlanTable(res) {
       document.getElementById('qcplan-save-area').style.display = 'block';
       document.getElementById('qcplan-save-status').textContent = '';
+      // เก็บยอดวันนี้ไว้ใน memory สำหรับกราฟ
+      const totalQty = (res.data || []).reduce(function(sum, item) { return sum + (item.qcQty || 0); }, 0);
+      qcHoldTodayLive = { items: res.totalQCItems || 0, qty: totalQty };
+      loadQCHoldHistory();
       const summaryEl = document.getElementById('qcplan-summary');
       document.getElementById('qcplan-chip-total').textContent  = '📦 QC Hold ทั้งหมด: ' + res.totalQCItems + ' รายการ';
       document.getElementById('qcplan-chip-urgent').textContent = '🚨 มีแผนผลิต (เร่งด่วน): ' + res.itemsWithPlan + ' รายการ';
