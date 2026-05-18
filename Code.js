@@ -11,6 +11,11 @@ const PLAN_SHEET_NAME_WH  = 'Plan';
 const QC_STD_SHEET_NAME   = 'StandardTST';
 const MECH_LOG_SHEET_NAME = 'บันทึกคุณสมบัติทางกล';
 
+// ── Production Block & QC Hold (external spreadsheets) ─────────────────────
+const PROD_BLOCK_SS_ID   = '1TXsmafvd-QPhFakvm7yOuyPgAyztaDzzRd1SHUIRWrY';
+const QC_HOLD_SS_ID      = '1YMwI8sbtInCBWVEYr877GrgkoYcmLe83T0z884Xx7sQ';
+const QC_HOLD_SHEET_NAME = 'งานกักคุณภาพQC/Hold-';
+
 // ============================================================
 // doGet — รับ GET request จาก frontend
 // ============================================================
@@ -29,6 +34,11 @@ function doGet(e) {
 
   if (action === 'getCoilLots') {
     return jsonResponse(getCoilLots());
+  }
+
+  if (action === 'getQCHoldProductionPlan') {
+    const offset = parseInt((e && e.parameter && e.parameter.monthOffset) ? e.parameter.monthOffset : '0') || 0;
+    return jsonResponse(getQCHoldProductionPlan(offset));
   }
 
   // health check
@@ -340,6 +350,151 @@ function recordMechData(formData) {
 
     sheet.autoResizeColumns(1, 8);
     return { success: true, message: 'บันทึกสำเร็จ ' + rows.length + ' รายการ' };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ============================================================
+// getQCHoldProductionPlan — ดึงข้อมูล QC Hold และจับคู่กับแผนผลิต
+// monthOffset: 0=เดือนปัจจุบัน, 1=เดือนหน้า, -1=เดือนที่แล้ว
+// ============================================================
+function getQCHoldProductionPlan(monthOffset) {
+  try {
+    monthOffset = monthOffset || 0;
+
+    // ── Step 1: ดึงรายการสินค้า QC Hold ──────────────────────────────────────
+    const qcSS    = SpreadsheetApp.openById(QC_HOLD_SS_ID);
+    const qcSheet = qcSS.getSheetByName(QC_HOLD_SHEET_NAME);
+    if (!qcSheet) return { success: false, message: 'ไม่พบชีต "' + QC_HOLD_SHEET_NAME + '"' };
+
+    const qcData    = qcSheet.getDataRange().getValues();
+    const qcItemMap = {};
+
+    // หา header row ที่มี "Item number" อยู่ใน col B (index 1)
+    let dataStartRow = 1;
+    for (let i = 0; i < Math.min(5, qcData.length); i++) {
+      if (String(qcData[i][1]).toLowerCase().includes('item')) {
+        dataStartRow = i + 1;
+        break;
+      }
+    }
+
+    for (let i = dataStartRow; i < qcData.length; i++) {
+      const itemCode    = String(qcData[i][1]).trim();
+      const productName = String(qcData[i][2]).trim();
+      const qty         = qcData[i][3];
+      if (!itemCode || itemCode === 'undefined') continue;
+      qcItemMap[itemCode] = {
+        productName: productName,
+        qty: (qty !== null && qty !== '') ? Number(qty) || 0 : 0
+      };
+    }
+
+    if (Object.keys(qcItemMap).length === 0) {
+      return { success: false, message: 'ไม่พบข้อมูลในชีต QC Hold' };
+    }
+
+    // ── Step 2: คำนวณชื่อชีตเดือนเป้าหมาย ────────────────────────────────────
+    const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                         'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+    const now        = new Date();
+    const target     = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const beYear2    = String((target.getFullYear() + 543) % 100);
+    const sheetName  = THAI_MONTHS[target.getMonth()] + ' ' + beYear2;
+
+    // ── Step 3: เปิดชีตแผนผลิต ────────────────────────────────────────────────
+    const planSS    = SpreadsheetApp.openById(PROD_BLOCK_SS_ID);
+    const planSheet = planSS.getSheetByName(sheetName);
+    if (!planSheet) {
+      const available = planSS.getSheets().map(s => s.getName());
+      return { success: false, message: 'ไม่พบชีต "' + sheetName + '" ในตาราง Production Block', availableSheets: available };
+    }
+
+    const planData = planSheet.getDataRange().getValues();
+    if (planData.length < 2) {
+      return { success: true, data: [], sheetName: sheetName, message: 'ชีตว่างเปล่า',
+               totalQCItems: Object.keys(qcItemMap).length, itemsWithPlan: 0, itemsNoPlan: Object.keys(qcItemMap).length };
+    }
+
+    // ── Step 4: อ่าน date columns จาก row 0 (เริ่มจาก col G = index 6) ────────
+    const headerRow = planData[0];
+    const dateCols  = [];
+    for (let col = 6; col < headerRow.length; col++) {
+      const cell = headerRow[col];
+      if (cell === null || cell === '') continue;
+      let label = '';
+      if (cell instanceof Date) {
+        label = Utilities.formatDate(cell, 'Asia/Bangkok', 'd/M/yyyy');
+      } else {
+        label = String(cell).trim();
+      }
+      if (label) dateCols.push({ colIdx: col, dateLabel: label });
+    }
+
+    // ── Step 5: จับคู่ QC Hold กับแผนผลิต ───────────────────────────────────
+    const matchedMap = {};
+
+    for (let row = 1; row < planData.length; row++) {
+      const productCode = String(planData[row][1]).trim(); // col B = index 1
+      if (!productCode || !qcItemMap[productCode]) continue;
+
+      const plannedDates = [];
+      for (const { colIdx, dateLabel } of dateCols) {
+        const cell = planData[row][colIdx];
+        if (cell === null || cell === '' || cell === 0) continue;
+        const qty = Number(cell);
+        if (!isNaN(qty) && qty > 0) plannedDates.push({ date: dateLabel, qty: qty });
+      }
+
+      if (!matchedMap[productCode]) {
+        matchedMap[productCode] = {
+          itemCode:     productCode,
+          productName:  qcItemMap[productCode].productName,
+          qcQty:        qcItemMap[productCode].qty,
+          plannedDates: plannedDates
+        };
+      } else {
+        // รวม qty ถ้าสินค้าเดียวกันผลิตหลาย Line เครื่อง
+        for (const pd of plannedDates) {
+          const existing = matchedMap[productCode].plannedDates.find(d => d.date === pd.date);
+          if (existing) {
+            existing.qty += pd.qty;
+          } else {
+            matchedMap[productCode].plannedDates.push(pd);
+          }
+        }
+      }
+    }
+
+    // รายการ QC Hold ที่ไม่มีแผนผลิตในเดือนนี้
+    for (const [itemCode, info] of Object.entries(qcItemMap)) {
+      if (!matchedMap[itemCode]) {
+        matchedMap[itemCode] = {
+          itemCode:     itemCode,
+          productName:  info.productName,
+          qcQty:        info.qty,
+          plannedDates: []
+        };
+      }
+    }
+
+    const results = Object.values(matchedMap).sort((a, b) => {
+      const aHas = a.plannedDates.length > 0 ? 1 : 0;
+      const bHas = b.plannedDates.length > 0 ? 1 : 0;
+      if (bHas !== aHas) return bHas - aHas;
+      return a.itemCode.localeCompare(b.itemCode);
+    });
+
+    return {
+      success:      true,
+      data:         results,
+      sheetName:    sheetName,
+      totalQCItems: Object.keys(qcItemMap).length,
+      itemsWithPlan: results.filter(r => r.plannedDates.length > 0).length,
+      itemsNoPlan:   results.filter(r => r.plannedDates.length === 0).length
+    };
+
   } catch (err) {
     return { success: false, message: err.toString() };
   }

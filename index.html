@@ -431,6 +431,9 @@
       <button class="nav-item" onclick="openTab(event,'tab-mech')">
         <span class="nav-icon">⚙️</span> คุณสมบัติทางกลวัตถุดิบ
       </button>
+      <button class="nav-item" onclick="openTab(event,'tab-qcplan')">
+        <span class="nav-icon">📋</span> QC Hold vs แผนผลิต
+      </button>
     </nav>
 
     <div class="sidebar-footer">
@@ -743,13 +746,58 @@
         </div>
       </section>
 
+      <!-- ── TAB 4 : QC HOLD vs PRODUCTION PLAN ─────────────────── -->
+      <section id="tab-qcplan" class="tab-content">
+        <div class="main-card">
+
+          <div class="card-header">
+            <div class="card-header-icon" style="background:linear-gradient(135deg,#C0392B,#E74C3C); color:white;">📋</div>
+            <div>
+              <h2 style="color:#C0392B;">QC Hold vs แผนผลิต</h2>
+              <p>ตรวจสอบสินค้าที่กักคุณภาพ QC Hold ว่ามีแผนผลิตวันไหนบ้างในเดือนนี้</p>
+            </div>
+          </div>
+
+          <div style="padding:20px 28px;">
+
+            <!-- Month selector + Load button -->
+            <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:6px; background:#F5F8FF; border:1.5px solid #DDE3EE; border-radius:9px; padding:4px 6px;">
+                <button onclick="qcPlanChangeMonth(-1)" style="padding:6px 12px; background:none; border:none; cursor:pointer; font-size:15px; color:#004B8D; font-weight:700; border-radius:6px;" title="เดือนก่อนหน้า">‹</button>
+                <span id="qcplan-month-label" style="font-size:14px; font-weight:700; color:#1a2b4a; min-width:120px; text-align:center;">—</span>
+                <button onclick="qcPlanChangeMonth(1)" style="padding:6px 12px; background:none; border:none; cursor:pointer; font-size:15px; color:#004B8D; font-weight:700; border-radius:6px;" title="เดือนถัดไป">›</button>
+              </div>
+              <button onclick="loadQCHoldPlan()" style="
+                padding:9px 22px; background:linear-gradient(135deg,#C0392B,#E74C3C);
+                color:white; border:none; border-radius:8px; font-size:14px; font-weight:700;
+                cursor:pointer; font-family:'Sarabun',sans-serif;
+                box-shadow:0 4px 12px rgba(192,57,43,0.30);">
+                🔍 โหลดข้อมูล
+              </button>
+              <div id="qcplan-status" style="font-size:13px; color:#6B7E99; font-weight:600;"></div>
+            </div>
+
+            <!-- Summary chips -->
+            <div id="qcplan-summary" style="display:none; gap:10px; margin-bottom:20px; flex-wrap:wrap; display:none;">
+              <div id="qcplan-chip-total"  style="padding:8px 16px; border-radius:8px; background:#F0F4FA; border:1.5px solid #DDE3EE; font-size:13px; font-weight:700; color:#1a2b4a;"></div>
+              <div id="qcplan-chip-urgent" style="padding:8px 16px; border-radius:8px; background:#FEF0EE; border:1.5px solid #E74C3C; font-size:13px; font-weight:700; color:#C0392B;"></div>
+              <div id="qcplan-chip-ok"     style="padding:8px 16px; border-radius:8px; background:#F0FBF5; border:1.5px solid #27AE60; font-size:13px; font-weight:700; color:#1B8A4E;"></div>
+            </div>
+
+            <!-- Table -->
+            <div id="qcplan-table-area"></div>
+
+          </div>
+        </div>
+      </section>
+
     </div><!-- /content-wrap -->
   </div><!-- /main-area -->
 </div><!-- /app-layout -->
 
   <script>
     // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxCitMjJTzgtGDXUc885PVcbUsFUoQ5tTZRvsLnMO6VFV2AoKv55Bgf8ygFu3d6pichLg/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwKA0GCcMhPoaFhPdTRav66SiPdzYMWJrUGlFaI72FPbo9RbNjDiTzDqjTmAmCRsgjDWw/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     let productMasterData = null;
@@ -824,7 +872,8 @@
       const titles = {
         'tab-sticker': '🖨️ พิมพ์สติกเกอร์ มอก.',
         'tab-cert':    '📄 ออกใบรับรองคุณภาพ',
-        'tab-mech':    '⚙️ คุณสมบัติทางกลวัตถุดิบ'
+        'tab-mech':    '⚙️ คุณสมบัติทางกลวัตถุดิบ',
+        'tab-qcplan':  '📋 QC Hold vs แผนผลิต'
       };
       document.getElementById('top-bar-title').textContent = titles[tabId] || '';
       if (tabId === 'tab-mech') {
@@ -1466,6 +1515,109 @@
     function printMechData() {
       if (!mechCurrentData.length) { alert('กรุณาโหลดข้อมูลก่อน'); return; }
       startPrintProcess('print-mode-mech');
+    }
+
+    // ── QC Hold vs Production Plan ────────────────────────────────────────────
+    let qcPlanMonthOffset = 0;
+
+    (function initQCPlanMonth() {
+      updateQCPlanMonthLabel();
+    })();
+
+    function updateQCPlanMonthLabel() {
+      const THAI_MONTHS = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน',
+                           'กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+      const now    = new Date();
+      const target = new Date(now.getFullYear(), now.getMonth() + qcPlanMonthOffset, 1);
+      const beYear = target.getFullYear() + 543;
+      const label  = THAI_MONTHS[target.getMonth()] + ' ' + beYear;
+      const el = document.getElementById('qcplan-month-label');
+      if (el) el.textContent = label;
+    }
+
+    function qcPlanChangeMonth(delta) {
+      qcPlanMonthOffset += delta;
+      updateQCPlanMonthLabel();
+      document.getElementById('qcplan-table-area').innerHTML = '';
+      document.getElementById('qcplan-summary').style.display = 'none';
+      document.getElementById('qcplan-status').textContent = '';
+    }
+
+    function loadQCHoldPlan() {
+      const statusEl = document.getElementById('qcplan-status');
+      const tableEl  = document.getElementById('qcplan-table-area');
+      const summaryEl = document.getElementById('qcplan-summary');
+      statusEl.textContent = '⏳ กำลังโหลด...';
+      tableEl.innerHTML = '';
+      summaryEl.style.display = 'none';
+
+      fetch(GAS_URL + '?action=getQCHoldProductionPlan&monthOffset=' + qcPlanMonthOffset)
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) {
+            statusEl.textContent = '❌ ' + res.message;
+            if (res.availableSheets) {
+              tableEl.innerHTML = '<div style="padding:16px; color:#C0392B; font-size:13px; background:#FEF0EE; border-radius:8px; margin-top:8px;">'
+                + 'ชีตที่มีอยู่: ' + res.availableSheets.join(', ') + '</div>';
+            }
+            return;
+          }
+          renderQCHoldPlanTable(res);
+          statusEl.textContent = '✅ ชีต: ' + res.sheetName;
+        })
+        .catch(err => { statusEl.textContent = '❌ เชื่อมต่อไม่ได้: ' + err.message; });
+    }
+
+    function renderQCHoldPlanTable(res) {
+      const summaryEl = document.getElementById('qcplan-summary');
+      document.getElementById('qcplan-chip-total').textContent  = '📦 QC Hold ทั้งหมด: ' + res.totalQCItems + ' รายการ';
+      document.getElementById('qcplan-chip-urgent').textContent = '🚨 มีแผนผลิต (เร่งด่วน): ' + res.itemsWithPlan + ' รายการ';
+      document.getElementById('qcplan-chip-ok').textContent     = '✅ ไม่มีแผนผลิตเดือนนี้: ' + res.itemsNoPlan + ' รายการ';
+      summaryEl.style.display = 'flex';
+
+      const tableEl = document.getElementById('qcplan-table-area');
+      if (!res.data || res.data.length === 0) {
+        tableEl.innerHTML = '<div style="padding:32px; text-align:center; color:#6B7E99;">ไม่พบข้อมูล</div>';
+        return;
+      }
+
+      let html = '<div style="overflow-x:auto;">'
+        + '<table style="width:100%; border-collapse:collapse; font-size:13px;">'
+        + '<thead><tr style="background:#F5F8FF; border-bottom:2px solid #DDE3EE;">'
+        + '<th style="padding:10px 12px; text-align:left; font-weight:700; color:#004B8D; white-space:nowrap;">รหัสสินค้า</th>'
+        + '<th style="padding:10px 12px; text-align:left; font-weight:700; color:#004B8D;">ชื่อสินค้า</th>'
+        + '<th style="padding:10px 12px; text-align:right; font-weight:700; color:#004B8D; white-space:nowrap;">จำนวน Hold</th>'
+        + '<th style="padding:10px 12px; text-align:left; font-weight:700; color:#004B8D;">แผนผลิตในเดือนนี้</th>'
+        + '</tr></thead><tbody>';
+
+      res.data.forEach((item, i) => {
+        const hasplan  = item.plannedDates && item.plannedDates.length > 0;
+        const rowBg    = hasplan ? (i % 2 === 0 ? '#FFF5F5' : '#FEF0EE') : (i % 2 === 0 ? '#fff' : '#FAFBFD');
+        const borderL  = hasplan ? 'border-left:4px solid #E74C3C;' : 'border-left:4px solid transparent;';
+        const codeColor = hasplan ? '#C0392B' : '#1a2b4a';
+
+        let datesHtml = '<span style="color:#6B7E99; font-size:12px;">— ไม่มีแผนผลิตในเดือนนี้ —</span>';
+        if (hasplan) {
+          const sorted = [...item.plannedDates].sort((a, b) => {
+            const toNum = s => { const p = s.split('/'); return parseInt(p[2])*10000 + parseInt(p[1])*100 + parseInt(p[0]); };
+            return toNum(a.date) - toNum(b.date);
+          });
+          datesHtml = sorted.map(d =>
+            '<span style="display:inline-block; margin:2px 3px; padding:3px 9px; border-radius:5px; background:#FDEDEC; border:1px solid #E74C3C; color:#C0392B; font-weight:700; white-space:nowrap;">'
+            + d.date + ' <span style="font-weight:400; color:#888;">[' + d.qty.toLocaleString() + ']</span></span>'
+          ).join('');
+        }
+
+        html += '<tr style="background:' + rowBg + '; ' + borderL + '">'
+          + '<td style="padding:10px 12px; font-weight:700; color:' + codeColor + '; white-space:nowrap; font-family:monospace;">' + item.itemCode + '</td>'
+          + '<td style="padding:10px 12px; color:#1a2b4a;">' + (item.productName || '—') + '</td>'
+          + '<td style="padding:10px 12px; text-align:right; font-weight:700; color:#1a2b4a;">' + (item.qcQty ? item.qcQty.toLocaleString() : '—') + '</td>'
+          + '<td style="padding:10px 12px;">' + datesHtml + '</td>'
+          + '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      tableEl.innerHTML = html;
     }
   </script>
 </body>
