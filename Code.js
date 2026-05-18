@@ -404,10 +404,35 @@ function getQCHoldProductionPlan(monthOffset) {
     const sheetName  = THAI_MONTHS[target.getMonth()] + ' ' + beYear2;
 
     // ── Step 3: เปิดชีตแผนผลิต ────────────────────────────────────────────────
-    const planSS    = SpreadsheetApp.openById(PROD_BLOCK_SS_ID);
-    const planSheet = planSS.getSheetByName(sheetName);
+    const planSS   = SpreadsheetApp.openById(PROD_BLOCK_SS_ID);
+    const allSheets = planSS.getSheets();
+
+    // normalize: ตัด whitespace ทุกชนิด + NFC เพื่อรับมือ Unicode ต่างกัน
+    const norm = function(s) {
+      return s.replace(/[   -​﻿]/g, ' ').trim();
+    };
+    const normTarget = norm(sheetName);
+
+    // Tier 1: exact match
+    let planSheet = planSS.getSheetByName(sheetName);
+
+    // Tier 2: normalized whitespace match
     if (!planSheet) {
-      const available = planSS.getSheets().map(s => s.getName());
+      planSheet = allSheets.find(function(s) {
+        return norm(s.getName()) === normTarget;
+      }) || null;
+    }
+
+    // Tier 3: contains match — ชื่อเดือนไทยปรากฏในชีต และปีตรงกัน
+    if (!planSheet) {
+      planSheet = allSheets.find(function(s) {
+        const n = s.getName();
+        return n.indexOf(THAI_MONTHS[target.getMonth()]) !== -1 && n.indexOf(beYear2) !== -1;
+      }) || null;
+    }
+
+    if (!planSheet) {
+      const available = allSheets.map(function(s) { return s.getName(); });
       return { success: false, message: 'ไม่พบชีต "' + sheetName + '" ในตาราง Production Block', availableSheets: available };
     }
 
