@@ -36,6 +36,11 @@ function doGet(e) {
     return jsonResponse(getCoilLots());
   }
 
+  if (action === 'getMechDataByDate') {
+    const date = (e && e.parameter && e.parameter.date) ? e.parameter.date : '';
+    return jsonResponse(getMechDataByDate(date));
+  }
+
   if (action === 'getQCHoldProductionPlan') {
     const offset = parseInt((e && e.parameter && e.parameter.monthOffset) ? e.parameter.monthOffset : '0') || 0;
     return jsonResponse(getQCHoldProductionPlan(offset));
@@ -321,7 +326,8 @@ function getPlanByDateForQC(dateStr) {
 }
 
 // ============================================================
-// recordMechData — บันทึกผลตรวจคุณสมบัติทางกลวัตถุดิบ
+// recordMechData — บันทึก/อัปเดตผลตรวจคุณสมบัติทางกล
+// ลบแถวเดิมของวันผลิตนั้นก่อน แล้ว insert ใหม่ (upsert)
 // ============================================================
 function recordMechData(formData) {
   try {
@@ -340,6 +346,19 @@ function recordMechData(formData) {
     const prodDate = formData.prod_date || '';
     const now      = new Date();
 
+    // ลบแถวเดิมของวันผลิตนี้ (delete from bottom → top เพื่อ index ไม่เลื่อน)
+    if (prodDate && sheet.getLastRow() > 1) {
+      const vals = sheet.getDataRange().getValues();
+      for (let i = vals.length - 1; i >= 1; i--) {
+        const d = vals[i][1];
+        const dStr = d instanceof Date
+          ? Utilities.formatDate(d, 'Asia/Bangkok', 'yyyy-MM-dd')
+          : String(d).trim();
+        if (dStr === prodDate) sheet.deleteRow(i + 1);
+      }
+    }
+
+    // Insert แถวใหม่
     for (const row of rows) {
       const products = JSON.parse(row.products || '[]');
       for (const prod of products) {
@@ -358,6 +377,43 @@ function recordMechData(formData) {
 
     sheet.autoResizeColumns(1, 8);
     return { success: true, message: 'บันทึกสำเร็จ ' + rows.length + ' รายการ' };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ============================================================
+// getMechDataByDate — ดึงข้อมูลที่บันทึกไว้สำหรับวันผลิตนั้น
+// ============================================================
+function getMechDataByDate(dateStr) {
+  try {
+    if (!dateStr) return { success: true, data: {} };
+    const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(MECH_LOG_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return { success: true, data: {} };
+
+    const vals   = sheet.getDataRange().getValues();
+    const result = {}; // thickness -> { lot, yield, tensile, elongation }
+
+    for (let i = 1; i < vals.length; i++) {
+      const row = vals[i];
+      const d   = row[1];
+      const dStr = d instanceof Date
+        ? Utilities.formatDate(d, 'Asia/Bangkok', 'yyyy-MM-dd')
+        : String(d).trim();
+      if (dStr !== dateStr) continue;
+
+      const thick = row[2] ? String(row[2]).trim() : '';
+      if (thick && !result[thick]) {
+        result[thick] = {
+          lot:        row[3] != null ? String(row[3]).trim() : '',
+          yield:      row[4] != null && row[4] !== '' ? String(row[4]) : '',
+          tensile:    row[5] != null && row[5] !== '' ? String(row[5]) : '',
+          elongation: row[6] != null && row[6] !== '' ? String(row[6]) : ''
+        };
+      }
+    }
+    return { success: true, data: result };
   } catch (err) {
     return { success: false, message: err.toString() };
   }

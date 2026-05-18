@@ -845,7 +845,7 @@
 
   <script>
     // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4GFzUUVq0KSdW8u2A9oO7_eEmVvJkcXQyRZfmld9ByTunfag1Y8ctFBELIk4MHdNkDQ/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbxXVU4cHwTIfaSvXMDc_UFDbnb2PfvVmY-lLKt9gqrZVU2oHGsmeVOjKYN4SH9K9DRpRQ/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     let productMasterData = null;
@@ -1434,6 +1434,7 @@
     // ── คุณสมบัติทางกลวัตถุดิบ ───────────────────────────────────────────────
     let mechCurrentData = [];
     let mechCurrentDate = '';
+    let mechIsSaving    = false;
 
     function loadMechData() {
       const dateEl = document.getElementById('mech_date');
@@ -1443,16 +1444,20 @@
       statusEl.textContent = '⏳ กำลังโหลด...';
       setStatus('กำลังโหลดแผน...', 'blue');
 
-      fetch(GAS_URL + '?action=getPlanByDate&date=' + encodeURIComponent(mechCurrentDate))
-        .then(r => r.json())
-        .then(res => {
-          if (!res.success) {
-            statusEl.textContent = '❌ ' + res.message;
+      // โหลดแผนผลิต + ข้อมูลที่บันทึกแล้ว พร้อมกัน
+      Promise.all([
+        fetch(GAS_URL + '?action=getPlanByDate&date=' + encodeURIComponent(mechCurrentDate)).then(r => r.json()),
+        fetch(GAS_URL + '?action=getMechDataByDate&date=' + encodeURIComponent(mechCurrentDate)).then(r => r.json())
+      ]).then(([planRes, savedRes]) => {
+          if (!planRes.success) {
+            statusEl.textContent = '❌ ' + planRes.message;
             setStatus('เกิดข้อผิดพลาด', 'red');
             return;
           }
-          mechCurrentData = res.data || [];
-          if (res._dbg) document.getElementById('mech-status').textContent += ' | ' + res._dbg;
+          mechCurrentData = planRes.data || [];
+          const savedData = (savedRes.success && savedRes.data) ? savedRes.data : {};
+          const hasExisting = Object.keys(savedData).length > 0;
+
           if (mechCurrentData.length === 0) {
             statusEl.textContent = '⚠️ ไม่พบแผนการผลิตในวันที่นี้';
             document.getElementById('mech-table-area').innerHTML =
@@ -1460,8 +1465,12 @@
             document.getElementById('mech-btn-area').style.display = 'none';
             setStatus('ไม่พบข้อมูล', 'orange');
           } else {
-            statusEl.textContent = '✅ ' + res.message;
-            renderMechTable(mechCurrentDate, mechCurrentData);
+            const label = hasExisting ? '🔄 อัปเดตข้อมูล' : '💾 บันทึกข้อมูล';
+            document.querySelector('#mech-btn-area button[onclick="saveMechData()"]').textContent = label;
+            statusEl.textContent = hasExisting
+              ? '✅ ' + planRes.message + ' — มีข้อมูลที่บันทึกแล้ว'
+              : '✅ ' + planRes.message;
+            renderMechTable(mechCurrentDate, mechCurrentData, savedData);
             document.getElementById('mech-btn-area').style.display = 'block';
             setStatus('โหลดสำเร็จ — ' + mechCurrentData.length + ' กลุ่มความหนา', 'green');
           }
@@ -1477,7 +1486,8 @@
       return parseInt(p[2]) + '/' + parseInt(p[1]) + '/' + (parseInt(p[0]) + 543).toString().slice(-2);
     }
 
-    function renderMechTable(dateStr, data) {
+    function renderMechTable(dateStr, data, savedData) {
+      savedData = savedData || {};
       const thaiDate = formatThaiDate(dateStr);
       const inp = 'width:100%;padding:7px 10px;border:1.5px solid #DDE3EE;border-radius:6px;' +
                   'font-family:\'Sarabun\',sans-serif;font-size:13px;text-align:center;outline:none;box-sizing:border-box;';
@@ -1503,22 +1513,28 @@
           <tbody>`;
 
       data.forEach((row, idx) => {
-        const bg = idx % 2 === 0 ? '#ffffff' : '#F5F8FF';
+        const bg   = idx % 2 === 0 ? '#ffffff' : '#F5F8FF';
+        const prev = savedData[row.thickness] || {};
+        const hasPrev = !!prev.lot || !!prev.yield;
+        const rowBorder = hasPrev ? 'border-left:3px solid #27AE60;' : '';
         html += `
-            <tr style="background:${bg};">
+            <tr style="background:${bg}; ${rowBorder}">
               <td style="padding:10px 14px; text-align:center; border:1px solid #DDE3EE;
-                         font-weight:800; font-size:17px; color:#004B8D;">${row.thickness}</td>
-              <td style="padding:5px 8px; border:1px solid #DDE3EE;">
-                <input type="text" class="mech-input" data-field="lot" data-idx="${idx}" style="${inp}">
+                         font-weight:800; font-size:17px; color:#004B8D;">
+                ${row.thickness}
+                ${hasPrev ? '<div style="font-size:10px;color:#27AE60;font-weight:600;">✓ มีข้อมูล</div>' : ''}
               </td>
               <td style="padding:5px 8px; border:1px solid #DDE3EE;">
-                <input type="number" class="mech-input" data-field="yield" data-idx="${idx}" style="${inp}">
+                <input type="text" class="mech-input" data-field="lot" data-idx="${idx}" value="${prev.lot||''}" style="${inp}">
               </td>
               <td style="padding:5px 8px; border:1px solid #DDE3EE;">
-                <input type="number" class="mech-input" data-field="tensile" data-idx="${idx}" style="${inp}">
+                <input type="number" class="mech-input" data-field="yield" data-idx="${idx}" value="${prev.yield||''}" style="${inp}">
               </td>
               <td style="padding:5px 8px; border:1px solid #DDE3EE;">
-                <input type="number" step="0.1" class="mech-input" data-field="elongation" data-idx="${idx}" style="${inp}">
+                <input type="number" class="mech-input" data-field="tensile" data-idx="${idx}" value="${prev.tensile||''}" style="${inp}">
+              </td>
+              <td style="padding:5px 8px; border:1px solid #DDE3EE;">
+                <input type="number" step="0.1" class="mech-input" data-field="elongation" data-idx="${idx}" value="${prev.elongation||''}" style="${inp}">
               </td>
               <td style="padding:8px 10px; border:1px solid #DDE3EE;">
                 <div style="display:flex; flex-wrap:wrap; gap:6px;">
@@ -1546,6 +1562,13 @@
 
     function saveMechData() {
       if (!mechCurrentData.length) { alert('กรุณาโหลดข้อมูลก่อน'); return; }
+      if (mechIsSaving) return;
+      mechIsSaving = true;
+
+      const saveBtn = document.querySelector('#mech-btn-area button[onclick="saveMechData()"]');
+      const origLabel = saveBtn ? saveBtn.textContent : '';
+      if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ กำลังบันทึก...'; }
+
       const rows = mechCurrentData.map((row, idx) => ({
         thickness:  row.thickness,
         lot:        getMechInputVal('lot', idx),
@@ -1554,13 +1577,29 @@
         elongation: getMechInputVal('elongation', idx),
         products:   JSON.stringify(row.products)
       }));
+
       setStatus('กำลังบันทึก...', 'blue');
       apiPost('recordMechData', { prod_date: mechCurrentDate, rows: JSON.stringify(rows) })
         .then(res => {
-          if (res.success) { alert('✅ ' + res.message); setStatus('บันทึกสำเร็จ', 'green'); }
-          else { alert('❌ ' + res.message); setStatus('บันทึกไม่สำเร็จ', 'red'); }
+          if (res.success) {
+            if (saveBtn) saveBtn.textContent = '🔄 อัปเดตข้อมูล';
+            setStatus('บันทึกสำเร็จ', 'green');
+            document.getElementById('mech-status').textContent = '✅ ' + res.message;
+          } else {
+            alert('❌ ' + res.message);
+            setStatus('บันทึกไม่สำเร็จ', 'red');
+            if (saveBtn) saveBtn.textContent = origLabel;
+          }
         })
-        .catch(err => { alert('เชื่อมต่อไม่ได้: ' + err.message); setStatus('เชื่อมต่อไม่ได้', 'red'); });
+        .catch(err => {
+          alert('เชื่อมต่อไม่ได้: ' + err.message);
+          setStatus('เชื่อมต่อไม่ได้', 'red');
+          if (saveBtn) saveBtn.textContent = origLabel;
+        })
+        .finally(() => {
+          mechIsSaving = false;
+          if (saveBtn) saveBtn.disabled = false;
+        });
     }
 
     function printMechData() {
