@@ -41,6 +41,10 @@ function doGet(e) {
     return jsonResponse(getQCHoldProductionPlan(offset));
   }
 
+  if (action === 'getQCHoldHistory') {
+    return jsonResponse(getQCHoldHistory());
+  }
+
   // health check
   return jsonResponse({ status: 'QC-TST API ready', version: '2.0' });
 }
@@ -62,6 +66,10 @@ function doPost(e) {
 
   if (action === 'recordMechData') {
     return jsonResponse(recordMechData(params));
+  }
+
+  if (action === 'saveQCHoldSnapshot') {
+    return jsonResponse(saveQCHoldSnapshot(params));
   }
 
   return jsonResponse({ success: false, message: 'Unknown action: ' + action });
@@ -521,6 +529,115 @@ function getQCHoldProductionPlan(monthOffset) {
       itemsWithPlan: results.filter(r => r.plannedDates.length > 0).length,
       itemsNoPlan:   results.filter(r => r.plannedDates.length === 0).length
     };
+
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ============================================================
+// saveQCHoldSnapshot — บันทึก snapshot ยอด Hold ณ วันนี้
+// ============================================================
+const QC_HOLD_HISTORY_SHEET = 'QC_Hold_History';
+
+function saveQCHoldSnapshot(params) {
+  try {
+    const totalItems = parseInt(params.totalItems || '0') || 0;
+    const totalQty   = parseFloat(params.totalQty   || '0') || 0;
+    const note       = params.note || '';
+
+    const ss  = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = ss.getSheetByName(QC_HOLD_HISTORY_SHEET);
+
+    if (!sheet) {
+      sheet = ss.insertSheet(QC_HOLD_HISTORY_SHEET);
+      sheet.appendRow(['วันที่บันทึก', 'จำนวนรายการ Hold', 'จำนวน Bundle รวม', 'หมายเหตุ']);
+      sheet.getRange(1, 1, 1, 4)
+           .setFontWeight('bold').setBackground('#C0392B').setFontColor('#ffffff');
+      sheet.setFrozenRows(1);
+    }
+
+    const now       = new Date();
+    const dateLabel = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy HH:mm');
+    const todayStr  = Utilities.formatDate(now, 'Asia/Bangkok', 'dd/MM/yyyy');
+    const lastRow   = sheet.getLastRow();
+
+    if (lastRow > 1) {
+      const lastDateVal = sheet.getRange(lastRow, 1).getValue();
+      const lastDateStr = lastDateVal instanceof Date
+        ? Utilities.formatDate(lastDateVal, 'Asia/Bangkok', 'dd/MM/yyyy')
+        : String(lastDateVal).substring(0, 10);
+      if (lastDateStr === todayStr) {
+        sheet.getRange(lastRow, 1, 1, 4).setValues([[dateLabel, totalItems, totalQty, note]]);
+        return { success: true, message: 'อัปเดตยอด Hold วันนี้แล้ว (' + dateLabel + ')', updated: true };
+      }
+    }
+
+    sheet.appendRow([dateLabel, totalItems, totalQty, note]);
+    return { success: true, message: 'บันทึกยอด Hold สำเร็จ (' + dateLabel + ')', updated: false };
+
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+// ============================================================
+// autoSaveQCHoldSnapshot — trigger อัตโนมัติทุกวัน 10:00-11:00 น.
+// ============================================================
+function autoSaveQCHoldSnapshot() {
+  try {
+    const qcSS    = SpreadsheetApp.openById(QC_HOLD_SS_ID);
+    const qcSheet = qcSS.getSheetByName(QC_HOLD_SHEET_NAME);
+    if (!qcSheet) { Logger.log('autoSave: ไม่พบชีต ' + QC_HOLD_SHEET_NAME); return; }
+
+    const qcData = qcSheet.getDataRange().getValues();
+    let dataStartRow = 1;
+    for (let i = 0; i < Math.min(5, qcData.length); i++) {
+      if (String(qcData[i][1]).toLowerCase().includes('item')) { dataStartRow = i + 1; break; }
+    }
+
+    let totalItems = 0;
+    let totalQty   = 0;
+    for (let i = dataStartRow; i < qcData.length; i++) {
+      const itemCode = String(qcData[i][1]).trim();
+      if (!itemCode || itemCode === 'undefined') continue;
+      totalItems++;
+      totalQty += (qcData[i][3] !== null && qcData[i][3] !== '') ? Number(qcData[i][3]) || 0 : 0;
+    }
+
+    saveQCHoldSnapshot({ totalItems: String(totalItems), totalQty: String(totalQty), note: 'อัตโนมัติ' });
+    Logger.log('autoSaveQCHoldSnapshot: ' + totalItems + ' รายการ, ' + totalQty + ' Bundle');
+
+  } catch (err) {
+    Logger.log('autoSaveQCHoldSnapshot error: ' + err.toString());
+  }
+}
+
+
+// ============================================================
+// getQCHoldHistory — ดึงประวัติยอด Hold ย้อนหลัง
+// ============================================================
+function getQCHoldHistory() {
+  try {
+    const ss    = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(QC_HOLD_HISTORY_SHEET);
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return { success: true, data: [], message: 'ยังไม่มีประวัติ' };
+    }
+
+    const values  = sheet.getDataRange().getValues();
+    const history = [];
+    for (let i = 1; i < values.length; i++) {
+      const row     = values[i];
+      const dateVal = row[0];
+      if (!dateVal) continue;
+      const dateLabel = dateVal instanceof Date
+        ? Utilities.formatDate(dateVal, 'Asia/Bangkok', 'dd/MM/yyyy')
+        : String(dateVal).substring(0, 10);
+      history.push({ date: dateLabel, items: Number(row[1]) || 0, qty: Number(row[2]) || 0, note: row[3] ? String(row[3]) : '' });
+    }
+
+    return { success: true, data: history };
 
   } catch (err) {
     return { success: false, message: err.toString() };

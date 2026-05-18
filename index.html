@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ระบบควบคุมคุณภาพ QC-TST</title>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
   /* ══════════════════════════════════════════════════════════════
@@ -784,8 +785,55 @@
               <div id="qcplan-chip-ok"     style="padding:8px 16px; border-radius:8px; background:#F0FBF5; border:1.5px solid #27AE60; font-size:13px; font-weight:700; color:#1B8A4E;"></div>
             </div>
 
+            <!-- Save snapshot button (แสดงหลังโหลดข้อมูล) -->
+            <div id="qcplan-save-area" style="display:none; margin-bottom:24px;">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <button onclick="saveQCHoldSnapshot()" style="
+                  padding:9px 22px; background:linear-gradient(135deg,#1B8A4E,#27AE60);
+                  color:white; border:none; border-radius:8px; font-size:14px; font-weight:700;
+                  cursor:pointer; font-family:'Sarabun',sans-serif;
+                  box-shadow:0 4px 12px rgba(27,138,78,0.30);">
+                  💾 บันทึกยอด Hold วันนี้
+                </button>
+                <input id="qcplan-note" type="text" placeholder="หมายเหตุ (ไม่บังคับ)" style="
+                  padding:9px 14px; border:1.5px solid #DDE3EE; border-radius:8px;
+                  font-size:13px; font-family:'Sarabun',sans-serif; color:#1a2b4a;
+                  width:220px; outline:none;">
+                <span id="qcplan-save-status" style="font-size:13px; font-weight:600; color:#6B7E99;"></span>
+              </div>
+            </div>
+
             <!-- Table -->
             <div id="qcplan-table-area"></div>
+
+            <!-- History Chart -->
+            <div id="qcplan-chart-wrap" style="margin-top:32px;">
+              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <div>
+                  <div style="font-size:15px; font-weight:800; color:#1a2b4a;">📈 ประวัติยอด QC Hold</div>
+                  <div style="font-size:12px; color:#6B7E99; margin-top:2px;">บันทึกย้อนหลัง — Bundle รวม และจำนวนรายการ</div>
+                </div>
+                <button onclick="loadQCHoldHistory()" style="
+                  padding:7px 16px; background:#F5F8FF; border:1.5px solid #DDE3EE;
+                  border-radius:7px; font-size:13px; font-weight:700; cursor:pointer;
+                  font-family:'Sarabun',sans-serif; color:#004B8D;">
+                  🔄 รีเฟรชกราฟ
+                </button>
+              </div>
+
+              <!-- Trend indicator -->
+              <div id="qcplan-trend" style="display:none; margin-bottom:14px;"></div>
+
+              <div style="background:#fff; border:1.5px solid #DDE3EE; border-radius:12px; padding:20px;">
+                <canvas id="qcHoldChart" style="max-height:300px;"></canvas>
+                <div id="qcplan-chart-empty" style="display:none; text-align:center; padding:40px; color:#6B7E99; font-size:14px;">
+                  ยังไม่มีประวัติ — กด "บันทึกยอด Hold วันนี้" เพื่อเริ่มเก็บข้อมูล
+                </div>
+              </div>
+
+              <!-- History table -->
+              <div id="qcplan-history-table" style="margin-top:16px; overflow-x:auto;"></div>
+            </div>
 
           </div>
         </div>
@@ -797,7 +845,7 @@
 
   <script>
     // ── ⚙️ ตั้งค่า GAS Web App URL ตรงนี้หลัง Deploy ─────────────────────────
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbzgisz4ChfY5UJH-p220iiI517iyvMqj8HOn6nWtEvELbDA3N6devZ99GGB_0D32p_qSA/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz4GFzUUVq0KSdW8u2A9oO7_eEmVvJkcXQyRZfmld9ByTunfag1Y8ctFBELIk4MHdNkDQ/exec';
     // ─────────────────────────────────────────────────────────────────────────
 
     let productMasterData = null;
@@ -879,6 +927,9 @@
       if (tabId === 'tab-mech') {
         const md = document.getElementById('mech_date');
         if (md && !md.value) { const t = new Date(); md.value = t.toISOString().slice(0,10); }
+      }
+      if (tabId === 'tab-qcplan') {
+        loadQCHoldHistory();
       }
     }
 
@@ -1517,6 +1568,197 @@
       startPrintProcess('print-mode-mech');
     }
 
+    // ── QC Hold History Chart ─────────────────────────────────────────────────
+    let qcHoldChartInstance = null;
+
+    function loadQCHoldHistory() {
+      fetch(GAS_URL + '?action=getQCHoldHistory')
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) return;
+          renderQCHoldChart(res.data || []);
+          renderQCHoldHistoryTable(res.data || []);
+        })
+        .catch(() => {});
+    }
+
+    function renderQCHoldChart(data) {
+      const canvas   = document.getElementById('qcHoldChart');
+      const emptyEl  = document.getElementById('qcplan-chart-empty');
+      const trendEl  = document.getElementById('qcplan-trend');
+
+      if (!data || data.length === 0) {
+        canvas.style.display = 'none';
+        emptyEl.style.display = 'block';
+        trendEl.style.display = 'none';
+        return;
+      }
+
+      canvas.style.display = 'block';
+      emptyEl.style.display = 'none';
+
+      // Trend indicator
+      if (data.length >= 2) {
+        const last  = data[data.length - 1];
+        const prev  = data[data.length - 2];
+        const diff  = last.qty - prev.qty;
+        const pct   = prev.qty > 0 ? ((diff / prev.qty) * 100).toFixed(1) : '—';
+        const up    = diff > 0;
+        const same  = diff === 0;
+        trendEl.style.display = 'flex';
+        trendEl.innerHTML =
+          '<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">' +
+          '<div style="padding:10px 18px;border-radius:9px;font-size:13px;font-weight:700;background:' +
+          (same ? '#F5F8FF' : up ? '#FEF0EE' : '#F0FBF5') + ';border:1.5px solid ' +
+          (same ? '#DDE3EE' : up ? '#E74C3C' : '#27AE60') + ';color:' +
+          (same ? '#6B7E99' : up ? '#C0392B' : '#1B8A4E') + ';">' +
+          (same ? '➡️ ทรงตัว' : up ? '🔺 เพิ่มขึ้น ' + diff.toLocaleString() + ' Bundle (' + pct + '%)' : '🔻 ลดลง ' + Math.abs(diff).toLocaleString() + ' Bundle (' + Math.abs(pct) + '%)') +
+          ' เทียบกับวันก่อน</div>' +
+          '<div style="font-size:12px;color:#6B7E99;">ล่าสุด: <b>' + last.date + '</b> — ' + last.qty.toLocaleString() + ' Bundle / ' + last.items + ' รายการ</div>' +
+          '</div>';
+      } else {
+        trendEl.style.display = 'none';
+      }
+
+      const labels   = data.map(d => d.date);
+      const qtyData  = data.map(d => d.qty);
+      const itemData = data.map(d => d.items);
+
+      if (qcHoldChartInstance) qcHoldChartInstance.destroy();
+
+      qcHoldChartInstance = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Bundle รวม',
+              data: qtyData,
+              borderColor: '#E74C3C',
+              backgroundColor: 'rgba(231,76,60,0.08)',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              pointBackgroundColor: '#E74C3C',
+              tension: 0.3,
+              fill: true,
+              yAxisID: 'yQty'
+            },
+            {
+              label: 'จำนวนรายการ Hold',
+              data: itemData,
+              borderColor: '#2E86C1',
+              backgroundColor: 'rgba(46,134,193,0.0)',
+              borderWidth: 2,
+              pointRadius: 3,
+              pointBackgroundColor: '#2E86C1',
+              tension: 0.3,
+              borderDash: [5, 4],
+              fill: false,
+              yAxisID: 'yItems'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'Sarabun', size: 13 } } },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            yQty: {
+              type: 'linear', position: 'left',
+              title: { display: true, text: 'Bundle', font: { family: 'Sarabun' } },
+              ticks: { font: { family: 'Sarabun' } }
+            },
+            yItems: {
+              type: 'linear', position: 'right',
+              title: { display: true, text: 'รายการ', font: { family: 'Sarabun' } },
+              ticks: { font: { family: 'Sarabun' } },
+              grid: { drawOnChartArea: false }
+            },
+            x: { ticks: { font: { family: 'Sarabun', size: 11 }, maxRotation: 45 } }
+          }
+        }
+      });
+    }
+
+    function renderQCHoldHistoryTable(data) {
+      const el = document.getElementById('qcplan-history-table');
+      if (!data || data.length === 0) { el.innerHTML = ''; return; }
+
+      const rows = [...data].reverse().slice(0, 30);
+      let html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+        + '<thead><tr style="background:#F5F8FF;border-bottom:2px solid #DDE3EE;">'
+        + '<th style="padding:8px 12px;text-align:left;font-weight:700;color:#004B8D;">วันที่บันทึก</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-weight:700;color:#004B8D;">จำนวนรายการ</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-weight:700;color:#004B8D;">Bundle รวม</th>'
+        + '<th style="padding:8px 12px;text-align:right;font-weight:700;color:#004B8D;">เทียบวันก่อน</th>'
+        + '<th style="padding:8px 12px;text-align:left;font-weight:700;color:#004B8D;">หมายเหตุ</th>'
+        + '</tr></thead><tbody>';
+
+      rows.forEach((row, i) => {
+        const prevRow = rows[i + 1];
+        let diffHtml  = '—';
+        if (prevRow) {
+          const diff = row.qty - prevRow.qty;
+          if (diff > 0)      diffHtml = '<span style="color:#C0392B;font-weight:700;">▲ ' + diff.toLocaleString() + '</span>';
+          else if (diff < 0) diffHtml = '<span style="color:#1B8A4E;font-weight:700;">▼ ' + Math.abs(diff).toLocaleString() + '</span>';
+          else               diffHtml = '<span style="color:#6B7E99;">—</span>';
+        }
+        const bg = i % 2 === 0 ? '#fff' : '#FAFBFD';
+        html += '<tr style="background:' + bg + ';border-bottom:1px solid #EEF2F7;">'
+          + '<td style="padding:8px 12px;color:#1a2b4a;font-weight:600;">' + row.date + '</td>'
+          + '<td style="padding:8px 12px;text-align:right;">' + row.items + '</td>'
+          + '<td style="padding:8px 12px;text-align:right;font-weight:700;">' + row.qty.toLocaleString() + '</td>'
+          + '<td style="padding:8px 12px;text-align:right;">' + diffHtml + '</td>'
+          + '<td style="padding:8px 12px;color:#6B7E99;">' + (row.note || '—') + '</td>'
+          + '</tr>';
+      });
+
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }
+
+    function saveQCHoldSnapshot() {
+      const saveBtn    = document.querySelector('#qcplan-save-area button');
+      const saveStatus = document.getElementById('qcplan-save-status');
+      const note       = (document.getElementById('qcplan-note').value || '').trim();
+
+      // ดึงยอดจาก summary chips ที่โหลดอยู่แล้ว
+      const totalText = document.getElementById('qcplan-chip-total').textContent || '';
+      const totalItems = parseInt(totalText.replace(/[^0-9]/g, '')) || 0;
+
+      // คำนวณ Bundle รวมจากตาราง
+      let totalQty = 0;
+      document.querySelectorAll('#qcplan-table-area tr').forEach(tr => {
+        const cells = tr.querySelectorAll('td');
+        if (cells.length >= 3) {
+          const val = parseFloat((cells[2].textContent || '').replace(/,/g, ''));
+          if (!isNaN(val)) totalQty += val;
+        }
+      });
+
+      if (totalItems === 0) { saveStatus.textContent = '⚠️ โหลดข้อมูลก่อนบันทึก'; return; }
+
+      saveBtn.disabled = true;
+      saveStatus.textContent = '⏳ กำลังบันทึก...';
+
+      apiPost('saveQCHoldSnapshot', { totalItems: totalItems, totalQty: totalQty, note: note })
+        .then(res => {
+          saveStatus.textContent = res.success ? '✅ ' + res.message : '❌ ' + res.message;
+          if (res.success) { loadQCHoldHistory(); document.getElementById('qcplan-note').value = ''; }
+        })
+        .catch(err => { saveStatus.textContent = '❌ ' + err.message; })
+        .finally(() => { saveBtn.disabled = false; });
+    }
+
     // ── QC Hold vs Production Plan ────────────────────────────────────────────
     let qcPlanMonthOffset = 0;
 
@@ -1569,6 +1811,8 @@
     }
 
     function renderQCHoldPlanTable(res) {
+      document.getElementById('qcplan-save-area').style.display = 'block';
+      document.getElementById('qcplan-save-status').textContent = '';
       const summaryEl = document.getElementById('qcplan-summary');
       document.getElementById('qcplan-chip-total').textContent  = '📦 QC Hold ทั้งหมด: ' + res.totalQCItems + ' รายการ';
       document.getElementById('qcplan-chip-urgent').textContent = '🚨 มีแผนผลิต (เร่งด่วน): ' + res.itemsWithPlan + ' รายการ';
