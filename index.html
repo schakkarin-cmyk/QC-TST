@@ -2045,8 +2045,15 @@
       fetch(GAS_URL + '?action=getQCHoldProductionPlan&monthOffset=' + qcPlanMonthOffset)
         .then(r => r.json())
         .then(res => {
+          // Guard: response ผิดรูปแบบ (เช่น GAS health-check หรือ deploy เก่า)
+          if (typeof res.success === 'undefined') {
+            statusEl.textContent = '❌ GAS ไม่รู้จัก action นี้ — กรุณา Deploy Code.js ใหม่';
+            tableEl.innerHTML = '<div style="padding:16px; color:#C0392B; font-size:13px; background:#FEF0EE; border-radius:8px; margin-top:8px;">'
+              + 'Response ที่ได้รับ: ' + JSON.stringify(res) + '</div>';
+            return;
+          }
           if (!res.success) {
-            statusEl.textContent = '❌ ' + res.message;
+            statusEl.textContent = '❌ ' + (res.message || 'เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ');
             if (res.availableSheets) {
               tableEl.innerHTML = '<div style="padding:16px; color:#C0392B; font-size:13px; background:#FEF0EE; border-radius:8px; margin-top:8px;">'
                 + 'ชีตที่มีอยู่: ' + res.availableSheets.join(', ') + '</div>';
@@ -2054,9 +2061,9 @@
             return;
           }
           renderQCHoldPlanTable(res);
-          statusEl.textContent = '✅ ชีต: ' + res.sheetName;
+          statusEl.textContent = '✅ ชีต: ' + (res.sheetName || '—');
         })
-        .catch(err => { statusEl.textContent = '❌ เชื่อมต่อไม่ได้: ' + err.message; });
+        .catch(err => { statusEl.textContent = '❌ เชื่อมต่อไม่ได้: ' + (err.message || String(err)); });
     }
 
     function renderQCHoldPlanTable(res) {
