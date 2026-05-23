@@ -245,29 +245,44 @@ function getPlanByDateForQC(dateStr) {
   try {
     if (!dateStr) throw new Error('กรุณาระบุวันที่');
 
-    // อ่านชีต Plan จาก FlowWH Spreadsheet
     const ss        = SpreadsheetApp.openById(SPREADSHEET_ID);
     const planSheet = ss.getSheetByName(PLAN_SHEET_NAME_WH);
     if (!planSheet) throw new Error('ไม่พบชีต "' + PLAN_SHEET_NAME_WH + '"');
 
     const planValues = planSheet.getDataRange().getValues();
 
-    // อ่าน StandardTST → ชื่อ (col C=2) และความหนา (col K=10)
+    // อ่าน StandardTST → code (col B=1), name (col C=2), thick (col K=10), linesPerBundle (col V=21)
     const qcSheet = ss.getSheetByName(QC_STD_SHEET_NAME);
-    const stdMap = {}; // code -> { thick, name }
+    const stdMap  = {};
     if (qcSheet) {
       const qcVals = qcSheet.getDataRange().getValues();
       for (let i = 1; i < qcVals.length; i++) {
-        const row   = qcVals[i];
-        const code  = row[1] ? row[1].toString().trim().toUpperCase() : null; // col B
-        const name  = row[2] ? row[2].toString().trim() : '';                 // col C
-        const thick = (row[10] != null && row[10] !== '') ? row[10].toString().trim() : null; // col K
-        if (code) stdMap[code] = { thick: thick || 'ไม่ระบุ', name: name || code };
+        const row  = qcVals[i];
+        const code = row[1] ? row[1].toString().trim().toUpperCase() : null;
+        if (!code) continue;
+        const name  = row[2]  ? row[2].toString().trim()  : '';
+        const thick = row[10] != null && row[10] !== '' ? row[10].toString().trim() : null;
+        const lpb   = row[21] != null && row[21] !== '' ? Number(row[21]) : 0;
+        stdMap[code] = { thick: thick || 'ไม่ระบุ', name: name || code, linesPerBundle: lpb };
       }
     }
 
-    // กรองรายการตามวันที่
-    const productCodes = new Set();
+    // อ่าน Master Product → size (col C=2), style (col D=3)
+    const masterSheet = ss.getSheetByName(MASTER_SHEET_NAME);
+    const masterMap   = {};
+    if (masterSheet) {
+      const mv = masterSheet.getDataRange().getValues();
+      for (let i = 1; i < mv.length; i++) {
+        const code = mv[i][0] ? mv[i][0].toString().trim().toUpperCase() : null;
+        if (code) masterMap[code] = {
+          size:  mv[i][2] ? mv[i][2].toString().trim() : '',
+          style: mv[i][3] ? mv[i][3].toString().trim() : ''
+        };
+      }
+    }
+
+    // สแกนแผน — สะสม qty (col N=13) และเลขล็อต (col O=14) ต่อรหัสสินค้า
+    const productMap = {}; // code -> { qty, lot }
     for (let i = 1; i < planValues.length; i++) {
       const row     = planValues[i];
       const dateVal = row[0];
@@ -287,24 +302,40 @@ function getPlanByDateForQC(dateStr) {
           rowDateStr = p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
         }
       }
-
       if (rowDateStr !== dateStr) continue;
 
       const code = row[4] ? row[4].toString().trim().toUpperCase() : null;
-      if (code) productCodes.add(code);
+      if (!code) continue;
+
+      const qty = (row[13] != null && row[13] !== '') ? Number(row[13]) : 0; // col N
+      const lot = row[14] ? row[14].toString().trim() : '';                   // col O
+
+      if (!productMap[code]) productMap[code] = { qty: 0, lot: '' };
+      productMap[code].qty += qty;
+      if (!productMap[code].lot && lot) productMap[code].lot = lot;
     }
 
-    if (productCodes.size === 0) {
+    const productCodes = Object.keys(productMap);
+    if (productCodes.length === 0) {
       return { success: true, data: [], message: 'ไม่พบแผนการผลิตในวันที่นี้' };
     }
 
-    // จัดกลุ่มตามความหนา เก็บทั้งรหัสและชื่อสินค้า
-    const groups = {}; // thick -> [{code, name}, ...]
+    // จัดกลุ่มตามความหนา
+    const groups = {};
     for (const code of productCodes) {
-      const info  = stdMap[code] || { thick: 'ไม่ระบุ', name: code };
-      const thick = info.thick;
+      const std    = stdMap[code]    || { thick: 'ไม่ระบุ', name: code, linesPerBundle: 0 };
+      const master = masterMap[code] || { size: '', style: '' };
+      const thick  = std.thick;
       if (!groups[thick]) groups[thick] = [];
-      groups[thick].push({ code: code, name: info.name });
+      groups[thick].push({
+        code:          code,
+        name:          std.name,
+        size:          master.size,
+        style:         master.style,
+        qty:           productMap[code].qty,
+        lot:           productMap[code].lot,
+        linesPerBundle: std.linesPerBundle
+      });
     }
 
     const result = Object.keys(groups)
@@ -312,13 +343,12 @@ function getPlanByDateForQC(dateStr) {
         const fa = parseFloat(a), fb = parseFloat(b);
         return (isNaN(fa) ? 999 : fa) - (isNaN(fb) ? 999 : fb);
       })
-      .map(thick => ({ thickness: thick, products: groups[thick].sort((a,b) => a.name.localeCompare(b.name)) }));
+      .map(thick => ({
+        thickness: thick,
+        products:  groups[thick].sort((a, b) => a.name.localeCompare(b.name))
+      }));
 
-    return {
-      success: true, data: result,
-      message: 'พบ ' + productCodes.size + ' รายการ',
-      _dbg: 'sheet=' + (!!qcSheet) + ' map=' + Object.keys(stdMap).length + ' mapSample=' + Object.keys(stdMap).slice(0,2).join('|') + ' planSample=' + Array.from(productCodes).slice(0,2).join('|')
-    };
+    return { success: true, data: result, message: 'พบ ' + productCodes.length + ' รายการ' };
 
   } catch (err) {
     return { success: false, message: err.toString() };

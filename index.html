@@ -346,6 +346,7 @@
 
     .main-area { margin-left: 0 !important; }
 
+    /* ── print-mode-sticker : มอก. 2817 (single sticker) ── */
     body.print-mode-sticker { width: 75mm !important; height: 25mm !important; }
     body.print-mode-sticker .content-wrap { margin: 0 !important; padding: 0 !important; }
     body.print-mode-sticker .main-card { border-radius: 0 !important; box-shadow: none !important; }
@@ -362,6 +363,38 @@
       margin: 0 !important; padding: 0 !important; border: none !important;
       width: 75mm !important; height: 25mm !important;
     }
+    body.print-mode-sticker #panel-107 { display: none !important; }
+    body.print-mode-sticker #sticker-print-area { display: none !important; }
+    body.print-mode-sticker #std-selector-wrap { display: none !important; }
+    body.print-mode-sticker .modal-overlay { display: none !important; }
+
+    /* ── print-mode-sticker107 : มอก. 107 (multi-copy stickers) ── */
+    body.print-mode-sticker107 .main-area { margin-left: 0 !important; }
+    body.print-mode-sticker107 .sidebar, body.print-mode-sticker107 .top-bar { display: none !important; }
+    body.print-mode-sticker107 .content-wrap { margin: 0 !important; padding: 0 !important; }
+    body.print-mode-sticker107 .main-card { border-radius: 0 !important; box-shadow: none !important; }
+    body.print-mode-sticker107 .tab-content:not(#tab-sticker) { display: none !important; }
+    body.print-mode-sticker107 #tab-sticker { display: block !important; }
+    body.print-mode-sticker107 #std-selector-wrap { display: none !important; }
+    body.print-mode-sticker107 #panel-107  { display: none !important; }
+    body.print-mode-sticker107 #panel-2817 { display: none !important; }
+    body.print-mode-sticker107 .card-header { display: none !important; }
+    body.print-mode-sticker107 #sticker-print-area { display: block !important; }
+    body.print-mode-sticker107 .modal-overlay { display: none !important; }
+    body.print-mode-sticker107 .sticker-wrap { padding: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+    body.print-mode-sticker107 .preview-panel { padding: 0 !important; background: white !important; width: 75mm !important; }
+    body.print-mode-sticker107 .sticker-preview {
+      display: block !important; transform: none !important;
+      margin: 0 !important; padding: 0 !important; border: none !important;
+      width: 75mm !important;
+    }
+    body.print-mode-sticker107 .sticker-content {
+      display: grid !important; width: 75mm !important; height: 25mm !important;
+      background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+    body.print-mode-sticker107 .tisi-no     { font-size: 9pt !important; font-weight: 800 !important; line-height: 1.0 !important; }
+    body.print-mode-sticker107 .company     { font-size: 7.5pt !important; font-weight: 800 !important; line-height: 1.0 !important; margin-bottom: 0.4mm !important; }
+    body.print-mode-sticker107 .product-details { font-size: 5.3pt !important; font-weight: 800 !important; line-height: 1.15 !important; color: #000 !important; white-space: nowrap !important; }
     body.print-mode-sticker .sticker-content {
       display: grid !important; width: 75mm !important; height: 25mm !important;
       background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
@@ -475,74 +508,73 @@
             <div class="card-header-icon icon-blue">🖨️</div>
             <div>
               <h2>พิมพ์สติกเกอร์ มอก.</h2>
-              <p>เลือกมาตรฐาน · กรอกข้อมูล · บันทึกและพิมพ์ — บันทึกลง Google Sheets อัตโนมัติ</p>
+              <p>เลือกมาตรฐาน · เลือกวันที่แผน · กดพิมพ์รายการ — บันทึกลง Google Sheets อัตโนมัติ</p>
             </div>
           </div>
 
-          <div class="form-preview-grid">
+          <!-- Standard Selector -->
+          <div id="std-selector-wrap" style="padding:20px 24px 0;">
+            <div class="sec-label">เลือกมาตรฐาน</div>
+            <div class="std-grid">
+              <label class="std-card selected" data-std="107">
+                <input type="radio" name="standard" value="107" checked onchange="switchStandard()">
+                <div class="std-check">✓</div>
+                <div class="std-top"><span class="std-mk mk-blue">มอก.</span></div>
+                <div class="std-no">107-2566</div>
+                <div class="std-desc">ท่อเหล็กกล้าคาร์บอน</div>
+              </label>
+              <label class="std-card" data-std="2817">
+                <input type="radio" name="standard" value="2817" onchange="switchStandard()">
+                <div class="std-check">✓</div>
+                <div class="std-top"><span class="std-mk mk-orange">มอก.</span></div>
+                <div class="std-no">2817-2562</div>
+                <div class="std-desc">เหล็กรูปตัวซีมีขอบ</div>
+              </label>
+            </div>
+          </div>
 
-            <!-- FORM ────────────────────────────────── -->
-            <div class="form-panel">
-              <form id="stickerForm" autocomplete="off">
+          <!-- ── PANEL มอก. 107 : plan-based flow ── -->
+          <div id="panel-107" style="padding:24px;">
+            <div class="sec-label">เลือกวันที่แผนการผลิต</div>
+            <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:16px;">
+              <div>
+                <input type="date" id="plan_date_107"
+                  style="padding:10px 13px; border:1.5px solid #DDE3EE; border-radius:8px;
+                         font-size:14px; font-family:'Sarabun',sans-serif; color:#1a2b4a; outline:none;">
+              </div>
+              <button onclick="loadPlan107()"
+                style="padding:10px 22px; background:linear-gradient(135deg,#1a3a6e,#2E86C1);
+                       color:white; border:none; border-radius:8px; font-size:14px;
+                       font-family:'Sarabun',sans-serif; cursor:pointer; font-weight:700; white-space:nowrap;">
+                🔍 แสดงรายการ
+              </button>
+            </div>
+            <div id="plan107-status" style="font-size:13px; color:#6B7E99; min-height:20px;"></div>
+            <div id="plan107-list"></div>
+          </div>
 
-                <div class="sec-label">เลือกมาตรฐาน</div>
-                <div class="std-grid">
-                  <label class="std-card selected" data-std="107">
-                    <input type="radio" name="standard" value="107" checked onchange="switchStandard()">
-                    <div class="std-check">✓</div>
-                    <div class="std-top"><span class="std-mk mk-blue">มอก.</span></div>
-                    <div class="std-no">107-2566</div>
-                    <div class="std-desc">ท่อเหล็กกล้าคาร์บอน</div>
-                  </label>
-                  <label class="std-card" data-std="2817">
-                    <input type="radio" name="standard" value="2817" onchange="switchStandard()">
-                    <div class="std-check">✓</div>
-                    <div class="std-top"><span class="std-mk mk-orange">มอก.</span></div>
-                    <div class="std-no">2817-2562</div>
-                    <div class="std-desc">เหล็กรูปตัวซีมีขอบ</div>
-                  </label>
-                </div>
-
-                <div class="sec-label">ข้อมูลสินค้า</div>
-                <div class="form-group">
-                  <label for="product_code">รหัสสินค้า (Product Code)</label>
-                  <input type="text" id="product_code" name="product_code" placeholder="กรอกหรือค้นหา เช่น P001" required oninput="showSuggestions()">
-                  <div id="autocomplete-list" class="autocomplete-list" style="display:none;"></div>
-                </div>
-
-                <div class="info-box">
-                  <div class="info-box-label">ชื่อสินค้า</div>
-                  <div class="info-box-value" id="product_name_display">— กรุณากรอกรหัสสินค้า —</div>
-                </div>
-                <input type="hidden" id="product_name" name="product_name" value="---">
-                <input type="hidden" id="size"  name="size">
-                <input type="hidden" id="style" name="style">
-
-                <div class="form-group">
-                  <label for="lot_no">เลขล็อต / รหัสรุ่น (Lot / Batch)</label>
-                  <input type="text" id="lot_no" name="lot_no" placeholder="เช่น P127/12" oninput="updatePreview()">
-                </div>
-
-                <!-- Fields: มอก. 107 -->
-                <div id="fields-107">
-                  <div class="sec-label">ข้อมูลเฉพาะ มอก. 107-2566</div>
-                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                    <div class="form-group">
-                      <label for="surface_coating">ผิวเคลือบ</label>
-                      <input type="text" id="surface_coating" name="surface_coating" placeholder="เช่น K06" oninput="updatePreview()">
-                    </div>
-                    <div class="form-group">
-                      <label for="grade">ชั้นคุณภาพ (Grade)</label>
-                      <select id="grade" name="grade" required onchange="updatePreview()">
-                        <option value="STKR400" selected>STKR400</option>
-                        <option value="STKR290">STKR290</option>
-                      </select>
-                    </div>
+          <!-- ── PANEL มอก. 2817 : manual form flow ── -->
+          <div id="panel-2817" style="display:none;">
+            <div class="form-preview-grid">
+              <div class="form-panel">
+                <form id="stickerForm" autocomplete="off">
+                  <div class="sec-label">ข้อมูลสินค้า</div>
+                  <div class="form-group">
+                    <label for="product_code">รหัสสินค้า (Product Code)</label>
+                    <input type="text" id="product_code" name="product_code" placeholder="กรอกหรือค้นหา เช่น P001" required oninput="showSuggestions()">
+                    <div id="autocomplete-list" class="autocomplete-list" style="display:none;"></div>
                   </div>
-                </div>
-
-                <!-- Fields: มอก. 2817 -->
-                <div id="fields-2817" style="display:none;">
+                  <div class="info-box">
+                    <div class="info-box-label">ชื่อสินค้า</div>
+                    <div class="info-box-value" id="product_name_display">— กรุณากรอกรหัสสินค้า —</div>
+                  </div>
+                  <input type="hidden" id="product_name" name="product_name" value="---">
+                  <input type="hidden" id="size" name="size">
+                  <input type="hidden" id="style" name="style">
+                  <div class="form-group">
+                    <label for="lot_no">เลขล็อต / รหัสรุ่น (Lot / Batch)</label>
+                    <input type="text" id="lot_no" name="lot_no" placeholder="เช่น P127/12" oninput="updatePreview()">
+                  </div>
                   <div class="sec-label">ข้อมูลเฉพาะ มอก. 2817-2562</div>
                   <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
                     <div class="form-group"><label>ชั้นคุณภาพ</label><input type="text" value="G340" readonly></div>
@@ -556,49 +588,56 @@
                     <label for="license_2817">เลขที่ใบอนุญาต</label>
                     <input type="text" id="license_2817" placeholder="เช่น 1234-567/2817" value="xxxxxxxx" oninput="updatePreview()">
                   </div>
-                </div>
-
-                <div class="btn-group">
-                  <button type="button" class="btn-print" onclick="printSticker()">🖨️ บันทึกและพิมพ์สติกเกอร์</button>
-                  <button type="button" class="btn-refresh" onclick="updatePreview()">🔄 อัปเดตตัวอย่าง</button>
-                </div>
-              </form>
-            </div><!-- /form-panel -->
-
-            <!-- PREVIEW ──────────────────────────────── -->
-            <div class="preview-panel">
-              <div class="preview-heading">ตัวอย่างสติกเกอร์ — Scale 150%</div>
-              <div class="sticker-wrap">
-                <div class="sticker-preview" id="stickerPreview"></div>
+                  <div class="btn-group">
+                    <button type="button" class="btn-print" onclick="printSticker()">🖨️ บันทึกและพิมพ์สติกเกอร์</button>
+                    <button type="button" class="btn-refresh" onclick="updatePreview()">🔄 อัปเดตตัวอย่าง</button>
+                  </div>
+                </form>
               </div>
-              <div class="sticker-note">* ขยายเพื่อให้เห็นรายละเอียด — ขนาดพิมพ์จริง 75 × 25 มม.</div>
 
-              <div class="preview-info" id="preview-info-box">
-                <div class="preview-info-title">ข้อมูลที่จะพิมพ์</div>
-                <div class="preview-info-row">
-                  <span class="preview-info-key">มาตรฐาน</span>
-                  <span class="preview-info-val" id="pi-std">—</span>
+              <!-- PREVIEW (2817 only) -->
+              <div class="preview-panel">
+                <div class="preview-heading">ตัวอย่างสติกเกอร์ — Scale 150%</div>
+                <div class="sticker-wrap">
+                  <div class="sticker-preview" id="stickerPreview"></div>
                 </div>
-                <div class="preview-info-row">
-                  <span class="preview-info-key">รหัสสินค้า</span>
-                  <span class="preview-info-val" id="pi-code">—</span>
-                </div>
-                <div class="preview-info-row">
-                  <span class="preview-info-key">ขนาด</span>
-                  <span class="preview-info-val" id="pi-size">—</span>
-                </div>
-                <div class="preview-info-row">
-                  <span class="preview-info-key">ล็อต</span>
-                  <span class="preview-info-val" id="pi-lot">—</span>
-                </div>
-                <div class="preview-info-row">
-                  <span class="preview-info-key">ใบอนุญาต</span>
-                  <span class="preview-info-val" id="pi-license">—</span>
+                <div class="sticker-note">* ขยายเพื่อให้เห็นรายละเอียด — ขนาดพิมพ์จริง 75 × 25 มม.</div>
+                <div class="preview-info" id="preview-info-box">
+                  <div class="preview-info-title">ข้อมูลที่จะพิมพ์</div>
+                  <div class="preview-info-row">
+                    <span class="preview-info-key">มาตรฐาน</span>
+                    <span class="preview-info-val" id="pi-std">—</span>
+                  </div>
+                  <div class="preview-info-row">
+                    <span class="preview-info-key">รหัสสินค้า</span>
+                    <span class="preview-info-val" id="pi-code">—</span>
+                  </div>
+                  <div class="preview-info-row">
+                    <span class="preview-info-key">ขนาด</span>
+                    <span class="preview-info-val" id="pi-size">—</span>
+                  </div>
+                  <div class="preview-info-row">
+                    <span class="preview-info-key">ล็อต</span>
+                    <span class="preview-info-val" id="pi-lot">—</span>
+                  </div>
+                  <div class="preview-info-row">
+                    <span class="preview-info-key">ใบอนุญาต</span>
+                    <span class="preview-info-val" id="pi-license">—</span>
+                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
-          </div><!-- /form-preview-grid -->
+          <!-- Hidden area: sticker DOM for 107 multi-copy print -->
+          <div id="sticker-print-area" style="display:none;">
+            <div class="preview-panel">
+              <div class="sticker-wrap">
+                <div class="sticker-preview" id="stickerPreview107"></div>
+              </div>
+            </div>
+          </div>
+
         </div><!-- /main-card -->
       </section>
 
@@ -894,9 +933,12 @@
     };
 
     window.onload = () => {
-      loadMasterData(); loadCoilLots(); updatePreview(); updateCertPreview();
+      loadMasterData(); loadCoilLots(); updateCertPreview();
+      const today = new Date().toISOString().slice(0, 10);
+      const pd = document.getElementById('plan_date_107');
+      if (pd) pd.value = today;
       const md = document.getElementById('mech_date');
-      if (md) { const t = new Date(); md.value = t.toISOString().slice(0,10); }
+      if (md) md.value = today;
     };
 
     // ── โหลด Master ──────────────────────────────────────────────────────────
@@ -981,37 +1023,19 @@
 
     function switchStandard() {
       const std = getSelectedStandard();
-      document.getElementById('fields-107').style.display  = std === '107'  ? 'block' : 'none';
-      document.getElementById('fields-2817').style.display = std === '2817' ? 'block' : 'none';
+      const p107  = document.getElementById('panel-107');
+      const p2817 = document.getElementById('panel-2817');
+      if (p107)  p107.style.display  = std === '107'  ? 'block' : 'none';
+      if (p2817) p2817.style.display = std === '2817' ? 'block' : 'none';
       document.querySelectorAll('.std-card').forEach(c => c.classList.remove('selected'));
       const card = document.querySelector(`.std-card[data-std="${std}"]`);
       if (card) card.classList.add('selected');
-      updatePreview();
+      if (std === '2817') updatePreview2817();
     }
 
-    // ── Preview ───────────────────────────────────────────────────────────────
+    // ── Preview (2817 only — 107 uses plan-based modal flow) ─────────────────
     function updatePreview() {
-      getSelectedStandard() === '2817' ? updatePreview2817() : updatePreview107();
-    }
-
-    function updatePreview107() {
-      const surface = document.getElementById('surface_coating').value.trim();
-      const lot     = document.getElementById('lot_no').value.trim();
-      const size    = document.getElementById('size').value;
-      const style   = document.getElementById('style').value;
-      const grade   = document.getElementById('grade').value;
-
-      let sizeDisplay = 'ขนาด ' + (size || '---');
-      if (surface) sizeDisplay += ' ' + surface;
-      if (lot)     sizeDisplay += ' ' + lot;
-
-      const details = [
-        FIXED_107.desc, sizeDisplay, style || '---',
-        FIXED_107.type, FIXED_107.coating,
-        'ชั้นคุณภาพ ' + grade, 'ใบอนุญาตเลขที่ ' + FIXED_107.license
-      ];
-      renderSticker(FIXED_107.tisi, FIXED_107.company, details);
-      updateInfoBox('107', size, lot, FIXED_107.license);
+      if (getSelectedStandard() === '2817') updatePreview2817();
     }
 
     function updatePreview2817() {
@@ -1101,6 +1125,176 @@
         window.print();
         setTimeout(() => { if (document.body.className !== 'idle-mode') document.body.className = 'idle-mode'; }, 1500);
       }, 800);
+    }
+
+    // ── มอก. 107 — Plan-based flow ───────────────────────────────────────────
+
+    let plan107Data = [];
+    let current107Item = null;
+
+    function loadPlan107() {
+      const dateEl = document.getElementById('plan_date_107');
+      if (!dateEl || !dateEl.value) { alert('กรุณาเลือกวันที่'); return; }
+      const statusEl = document.getElementById('plan107-status');
+      const listEl   = document.getElementById('plan107-list');
+      if (statusEl) statusEl.textContent = '⏳ กำลังโหลด...';
+      if (listEl)   listEl.innerHTML = '';
+      plan107Data = [];
+
+      fetch(GAS_URL + '?action=getPlanByDate&date=' + encodeURIComponent(dateEl.value))
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) {
+            if (statusEl) statusEl.textContent = '❌ ' + res.message;
+            return;
+          }
+          (res.data || []).forEach(group => {
+            (group.products || []).forEach(p => {
+              if (p.code && p.code.toUpperCase().endsWith('T')) {
+                const lpb = p.linesPerBundle || 0;
+                plan107Data.push({
+                  code: p.code, name: p.name,
+                  size: p.size || '', style: p.style || '',
+                  qty: p.qty || 0, lot: p.lot || '',
+                  linesPerBundle: lpb,
+                  tagsCount: lpb > 0 ? Math.ceil((p.qty || 0) / lpb) : null
+                });
+              }
+            });
+          });
+          if (plan107Data.length === 0) {
+            if (statusEl) statusEl.textContent = '⚠️ ไม่พบสินค้า มอก. 107 (รหัสลงท้าย T) ในวันที่นี้';
+          } else {
+            if (statusEl) statusEl.textContent = '✅ พบ ' + plan107Data.length + ' รายการ';
+            render107List();
+          }
+        })
+        .catch(err => { if (statusEl) statusEl.textContent = '❌ เชื่อมต่อไม่ได้: ' + err.message; });
+    }
+
+    function render107List() {
+      const listEl = document.getElementById('plan107-list');
+      if (!listEl) return;
+      const S = 'padding:9px 13px; border:1px solid #E2E8F0;';
+      const SC = S + ' text-align:center;';
+      let html = `
+        <div style="overflow-x:auto; margin-top:14px;">
+        <table style="width:100%; border-collapse:collapse; font-size:14px; font-family:'Sarabun',sans-serif;">
+          <thead>
+            <tr style="background:#1a3a6e; color:white;">
+              <th style="${S}">รหัสสินค้า</th>
+              <th style="${S}">ชื่อสินค้า</th>
+              <th style="${SC}">จำนวนเส้น</th>
+              <th style="${SC}">เส้น/มัด</th>
+              <th style="${SC} font-size:15px;">ต้องพิมพ์</th>
+              <th style="${SC}">เลขล็อต</th>
+              <th style="${SC}"></th>
+            </tr>
+          </thead><tbody>`;
+      plan107Data.forEach((item, i) => {
+        const bg = i % 2 === 0 ? '#fff' : '#F7F9FC';
+        const tags = item.tagsCount != null ? `<strong style="color:#1a3a6e;font-size:16px;">${item.tagsCount}</strong> ใบ` : '<span style="color:#999;">—</span>';
+        html += `<tr style="background:${bg}; border-bottom:1px solid #E2E8F0;">
+          <td style="${S} font-weight:700; font-family:monospace; color:#1a3a6e;">${item.code}</td>
+          <td style="${S}">${item.name}</td>
+          <td style="${SC}">${item.qty.toLocaleString()}</td>
+          <td style="${SC}">${item.linesPerBundle || '—'}</td>
+          <td style="${SC}">${tags}</td>
+          <td style="${SC} font-family:monospace; font-size:12px; color:#555;">${item.lot || '—'}</td>
+          <td style="${SC}">
+            <button onclick="openModal107(${i})"
+              style="padding:7px 16px; background:#1a3a6e; color:white; border:none;
+                     border-radius:7px; cursor:pointer; font-size:13px; font-family:'Sarabun',sans-serif; font-weight:700;">
+              🖨️ พิมพ์
+            </button>
+          </td>
+        </tr>`;
+      });
+      html += '</tbody></table></div>';
+      listEl.innerHTML = html;
+    }
+
+    function openModal107(idx) {
+      current107Item = plan107Data[idx];
+      if (!current107Item) return;
+      const item = current107Item;
+      const el = id => document.getElementById(id);
+      el('modal107-code').textContent      = item.code;
+      el('modal107-name').textContent      = item.name + (item.size ? '  —  ' + item.size : '');
+      el('modal107-plan-qty').textContent  = item.qty.toLocaleString();
+      el('modal107-lpb').textContent       = item.linesPerBundle || '—';
+      el('modal107-lot').value             = item.lot;
+      el('modal107-qty').value             = item.tagsCount != null ? item.tagsCount : 1;
+      el('modal107-surface').value         = '';
+      el('modal107-grade').value           = 'STKR400';
+      const modal = document.getElementById('modal-print107');
+      if (modal) { modal.style.display = 'flex'; }
+      setTimeout(() => { const s = el('modal107-surface'); if (s) s.focus(); }, 100);
+    }
+
+    function closeModal107() {
+      const modal = document.getElementById('modal-print107');
+      if (modal) modal.style.display = 'none';
+      current107Item = null;
+    }
+
+    function confirmPrint107() {
+      const item = current107Item;
+      if (!item) return;
+      const el = id => document.getElementById(id);
+      const surface = el('modal107-surface').value.trim();
+      const grade   = el('modal107-grade').value;
+      const lot     = el('modal107-lot').value.trim();
+      const qty     = parseInt(el('modal107-qty').value) || 1;
+      if (!surface) { el('modal107-surface').style.border = '2px solid #e53935'; el('modal107-surface').focus(); return; }
+      el('modal107-surface').style.border = '';
+
+      let sizeDisplay = 'ขนาด ' + (item.size || '---');
+      if (surface) sizeDisplay += ' ' + surface;
+      if (lot)     sizeDisplay += ' ' + lot;
+
+      const details = [
+        FIXED_107.desc, sizeDisplay, item.style || '---',
+        FIXED_107.type, FIXED_107.coating,
+        'ชั้นคุณภาพ ' + grade, 'ใบอนุญาตเลขที่ ' + FIXED_107.license
+      ];
+      const inner = `
+        <div class="left-panel">
+          <div class="sticker-logo"><img src="${TISI_LOGO}"></div>
+          <div class="sticker-qr"><img src="${QR_CODE}"></div>
+        </div>
+        <div class="right-panel">
+          <div class="tisi-no">มอก.${FIXED_107.tisi}</div>
+          <div class="company">${FIXED_107.company}</div>
+          <div class="details-area">
+            ${details.map(d => `<div class="product-details">${d}</div>`).join('')}
+          </div>
+        </div>`;
+
+      let html = '';
+      for (let i = 0; i < qty; i++) {
+        const pb = i < qty - 1 ? ' style="page-break-after:always;"' : '';
+        html += `<div class="sticker-content"${pb}>${inner}</div>`;
+      }
+      document.getElementById('stickerPreview107').innerHTML = html;
+
+      const data = {
+        tisi_no: FIXED_107.tisi, company: FIXED_107.company,
+        product_desc: FIXED_107.desc, type: FIXED_107.type,
+        coating: FIXED_107.coating, license_no: FIXED_107.license,
+        surface_coating: surface, lot_no: lot, grade: grade,
+        size: item.size, style: item.style,
+        product_code: item.code, tags_qty: qty
+      };
+
+      closeModal107();
+      setStatus('กำลังบันทึก...', 'blue');
+      apiPost('recordData', data)
+        .then(res => {
+          if (res.success) { startPrintProcess('print-mode-sticker107'); setStatus('บันทึกและพร้อมพิมพ์ ' + qty + ' ใบ', 'green'); }
+          else { setStatus('เกิดข้อผิดพลาด: ' + res.message, 'red'); }
+        })
+        .catch(err => setStatus('บันทึกไม่ได้: ' + err.message, 'red'));
     }
 
     // ── Coil Lots ─────────────────────────────────────────────────────────────
@@ -1958,5 +2152,91 @@
       tableEl.innerHTML = html;
     }
   </script>
+
+  <!-- ══ MODAL: ยืนยันพิมพ์ มอก. 107 ══════════════════════════════════════ -->
+  <div id="modal-print107" class="modal-overlay"
+       style="display:none; position:fixed; inset:0; z-index:9999;
+              background:rgba(15,23,42,0.6); align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:14px; padding:28px 32px; max-width:500px; width:94%;
+                box-shadow:0 16px 48px rgba(0,0,0,0.3); position:relative;">
+
+      <!-- Header -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:11px; font-weight:700; color:#6B7E99; letter-spacing:1.5px;
+                    text-transform:uppercase; margin-bottom:6px;">ยืนยันการพิมพ์ — มอก. 107-2566</div>
+        <div id="modal107-code"
+             style="font-size:21px; font-weight:900; font-family:monospace; color:#1a3a6e; line-height:1.1;"></div>
+        <div id="modal107-name" style="font-size:13px; color:#555; margin-top:3px;"></div>
+      </div>
+
+      <!-- Plan info box -->
+      <div style="background:#EEF4FF; border:1px solid #C5D8F6; border-radius:9px;
+                  padding:11px 16px; margin-bottom:18px; font-size:13px; color:#2a3a5a; display:flex; gap:28px;">
+        <div>จำนวนตามแผน: <strong id="modal107-plan-qty" style="color:#1a3a6e; font-size:15px;">—</strong> เส้น</div>
+        <div>เส้น/มัด: <strong id="modal107-lpb" style="color:#1a3a6e; font-size:15px;">—</strong></div>
+      </div>
+
+      <!-- Lot + Qty -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-bottom:13px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; margin-bottom:5px; color:#444;">
+            เลขล็อต <span style="color:#888; font-weight:400;">(จากแผน)</span>
+          </label>
+          <input type="text" id="modal107-lot"
+            style="width:100%; padding:9px 12px; border:1.5px solid #DDE3EE; border-radius:7px;
+                   font-size:14px; font-family:'Sarabun',sans-serif; box-sizing:border-box; outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; margin-bottom:5px; color:#444;">
+            จำนวนใบที่จะพิมพ์
+          </label>
+          <input type="number" id="modal107-qty" min="1"
+            style="width:100%; padding:9px 12px; border:1.5px solid #DDE3EE; border-radius:7px;
+                   font-size:14px; font-family:'Sarabun',sans-serif; box-sizing:border-box; outline:none;">
+        </div>
+      </div>
+
+      <!-- Surface + Grade (required) -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:13px; margin-bottom:24px;">
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; margin-bottom:5px;">
+            ผิวเคลือบ <span style="color:#e53935;">*</span>
+          </label>
+          <input type="text" id="modal107-surface" placeholder="เช่น K06"
+            style="width:100%; padding:9px 12px; border:1.5px solid #DDE3EE; border-radius:7px;
+                   font-size:14px; font-family:'Sarabun',sans-serif; box-sizing:border-box; outline:none;">
+        </div>
+        <div>
+          <label style="display:block; font-size:12px; font-weight:700; margin-bottom:5px;">
+            ชั้นคุณภาพ <span style="color:#e53935;">*</span>
+          </label>
+          <select id="modal107-grade"
+            style="width:100%; padding:9px 12px; border:1.5px solid #DDE3EE; border-radius:7px;
+                   font-size:14px; font-family:'Sarabun',sans-serif; background:white;
+                   box-sizing:border-box; outline:none; color:#1a2b4a;">
+            <option value="STKR400">STKR400</option>
+            <option value="STKR290">STKR290</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button onclick="closeModal107()"
+          style="padding:10px 24px; border:1.5px solid #CCD3E0; border-radius:8px; background:#fff;
+                 cursor:pointer; font-size:14px; font-family:'Sarabun',sans-serif; color:#444; font-weight:600;">
+          ยกเลิก
+        </button>
+        <button onclick="confirmPrint107()"
+          style="padding:10px 26px; background:linear-gradient(135deg,#1a3a6e,#2E86C1); color:white;
+                 border:none; border-radius:8px; font-size:14px; font-family:'Sarabun',sans-serif;
+                 cursor:pointer; font-weight:700;">
+          🖨️ บันทึกและพิมพ์
+        </button>
+      </div>
+
+    </div>
+  </div>
+
 </body>
 </html>
