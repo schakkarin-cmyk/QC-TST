@@ -11,6 +11,11 @@ const PLAN_SHEET_NAME_WH  = 'Plan';
 const QC_STD_SHEET_NAME   = 'StandardTST';
 const MECH_LOG_SHEET_NAME = 'บันทึกคุณสมบัติทางกล';
 
+// ── แผนผลิตจากแอปผลิต TST (Supabase) ──────────────────────────────────────
+// token เก็บใน Script Properties ชื่อ QC_PLAN_TOKEN (ห้ามฝังในโค้ด — repo นี้เปิดสาธารณะ)
+// Apps Script editor → Project Settings → Script Properties → Add
+const PROD_APP_QC_PLAN_URL = 'https://tstproduction.vercel.app/api/public/qc-plan';
+
 // ── Production Block & QC Hold (external spreadsheets) ─────────────────────
 const PROD_BLOCK_SS_ID   = '1TXsmafvd-QPhFakvm7yOuyPgAyztaDzzRd1SHUIRWrY';
 const QC_HOLD_SS_ID      = '1YMwI8sbtInCBWVEYr877GrgkoYcmLe83T0z884Xx7sQ';
@@ -239,17 +244,45 @@ function getCoilLots() {
 }
 
 // ============================================================
+// fetchProductionPlan — ดึงแผนของวันจากแอปผลิต คืน { code: { qty, lot } }
+// วันนี้/วันหน้า = ตารางสดเดียวกับหน้าบล็อก · วันที่ผ่านมา = ยอดตั้งต้นที่ snapshot ตอนตี 1
+// lot = เลข MO (แอปผลิตยังไม่มีเลขล็อตตอนวางแผน)
+// ============================================================
+function fetchProductionPlan(dateStr) {
+  const token = PropertiesService.getScriptProperties().getProperty('QC_PLAN_TOKEN');
+  if (!token) throw new Error('ยังไม่ได้ตั้ง QC_PLAN_TOKEN ใน Script Properties');
+
+  const res = UrlFetchApp.fetch(
+    PROD_APP_QC_PLAN_URL + '?date=' + encodeURIComponent(dateStr),
+    { headers: { Authorization: 'Bearer ' + token }, muteHttpExceptions: true }
+  );
+  let body;
+  try { body = JSON.parse(res.getContentText()); } catch (e) { body = null; }
+  if (res.getResponseCode() !== 200 || !body || !body.success) {
+    throw new Error('ดึงแผนจากแอปผลิตไม่ได้ (' + res.getResponseCode() + '): ' +
+      ((body && body.message) || res.getContentText().slice(0, 200)));
+  }
+
+  const productMap = {};
+  (body.rows || []).forEach(function(r) {
+    const code = r.code ? r.code.toString().trim().toUpperCase() : null;
+    if (!code) return;
+    productMap[code] = { qty: Number(r.qty) || 0, lot: r.lot || '' };
+  });
+  return productMap;
+}
+
+// ============================================================
 // getPlanByDateForQC — ดึงแผนการผลิตและจัดกลุ่มตามความหนา
 // ============================================================
 function getPlanByDateForQC(dateStr) {
   try {
     if (!dateStr) throw new Error('กรุณาระบุวันที่');
 
-    const ss        = SpreadsheetApp.openById(SPREADSHEET_ID);
-    const planSheet = ss.getSheetByName(PLAN_SHEET_NAME_WH);
-    if (!planSheet) throw new Error('ไม่พบชีต "' + PLAN_SHEET_NAME_WH + '"');
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-    const planValues = planSheet.getDataRange().getValues();
+    // แผนผลิตมาจากแอปผลิต TST (Supabase) — เลิกอ่านชีต "Plan" แล้ว (22 ต.ค. 69)
+    const productMap = fetchProductionPlan(dateStr); // code -> { qty, lot }
 
     // อ่าน StandardTST → code (col B=1), name (col C=2), thick (col K=10), linesPerBundle (col V=21)
     const qcSheet = ss.getSheetByName(QC_STD_SHEET_NAME);
@@ -279,40 +312,6 @@ function getPlanByDateForQC(dateStr) {
           style: mv[i][3] ? mv[i][3].toString().trim() : ''
         };
       }
-    }
-
-    // สแกนแผน — สะสม qty (col N=13) และเลขล็อต (col O=14) ต่อรหัสสินค้า
-    const productMap = {}; // code -> { qty, lot }
-    for (let i = 1; i < planValues.length; i++) {
-      const row     = planValues[i];
-      const dateVal = row[0];
-      if (dateVal == null || dateVal === '') continue;
-
-      let rowDateStr = '';
-      if (dateVal instanceof Date) {
-        rowDateStr = Utilities.formatDate(dateVal, 'Asia/Bangkok', 'yyyy-MM-dd');
-      } else {
-        const s = dateVal.toString().trim();
-        if (s.length === 8 && /^\d{8}$/.test(s)) {
-          rowDateStr = s.substring(0,4) + '-' + s.substring(4,6) + '-' + s.substring(6,8);
-        } else if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-          rowDateStr = s;
-        } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(s)) {
-          const p = s.split('/');
-          rowDateStr = p[2] + '-' + p[1].padStart(2,'0') + '-' + p[0].padStart(2,'0');
-        }
-      }
-      if (rowDateStr !== dateStr) continue;
-
-      const code = row[4] ? row[4].toString().trim().toUpperCase() : null;
-      if (!code) continue;
-
-      const qty = (row[13] != null && row[13] !== '') ? Number(row[13]) : 0; // col N
-      const lot = row[14] ? row[14].toString().trim() : '';                   // col O
-
-      if (!productMap[code]) productMap[code] = { qty: 0, lot: '' };
-      productMap[code].qty += qty;
-      if (!productMap[code].lot && lot) productMap[code].lot = lot;
     }
 
     const productCodes = Object.keys(productMap);
